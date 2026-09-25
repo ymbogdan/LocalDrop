@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LocalDrop</title>
+  <link rel="stylesheet" href="glass.css">
+</head>
+<body>
+  <div class="shell">
+    <div class="top">
+      <button class="icon-btn" id="settings" type="button">⚙</button>
+    </div>
+    <h1>LocalDrop</h1>
+    <p class="subtitle" id="hint">Senza Wi-Fi: collega il telefono col cavo e attiva Hotspot personale. Il computer non ha bisogno di internet.</p>
+    <section class="glass">
+      <h2>Indirizzo</h2>
+      <img id="qr" class="qr" alt="Codice QR" hidden>
+      <div class="url" id="url">In attesa della rete…</div>
+      <div class="pin"><span id="pin-a">•••</span><span id="pin-b">•••</span></div>
+      <div class="row">
+        <button class="primary" id="copy" type="button">Copia indirizzo</button>
+      </div>
+      <div class="folder" id="folder"></div>
+    </section>
+    <section class="glass">
+      <h2>Verso il telefono</h2>
+      <div class="list" id="shares"><p class="empty">Nessun file scelto.</p></div>
+      <div class="list" id="sent"></div>
+      <div class="row">
+        <button class="primary" id="choose" type="button">Scegli file</button>
+        <button class="ghost" id="clear" type="button">Svuota</button>
+      </div>
+    </section>
+    <section class="glass">
+      <h2>Dal telefono</h2>
+      <p class="empty" id="inbox-empty">Nessun file in attesa.</p>
+      <div class="list" id="inbox"></div>
+      <label class="folder">Cartella<input id="inbox-folder" style="width:100%;margin-top:6px;border-radius:14px;border:1px solid rgba(60,60,67,.16);padding:12px;font:inherit"></label>
+      <div class="row">
+        <button class="ghost" id="inbox-pick" type="button">Scegli cartella</button>
+      </div>
+      <div class="row">
+        <button class="primary" id="inbox-save" type="button">Salva i selezionati</button>
+        <button class="ghost" id="inbox-drop" type="button">Scarta</button>
+      </div>
+    </section>
+    <section class="glass">
+      <h2>Attività</h2>
+      <div class="bar"><div id="bar-fill"></div></div>
+      <p class="hint" id="bar-label"></p>
+      <div class="list activity" id="activity"><p class="empty">Nessun trasferimento.</p></div>
+    </section>
+  </div>
+  <div class="modal" id="modal">
+    <div class="sheet">
+      <h2 id="modal-title" style="margin-top:0;text-transform:none;letter-spacing:-0.03em;font-size:22px;color:#1c1c1e">LocalDrop</h2>
+      <p id="modal-body"></p>
+      <div class="row">
+        <button class="ghost" id="modal-no" type="button">Annulla</button>
+        <button class="primary" id="modal-yes" type="button">Conferma</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal" id="settings-modal">
+    <div class="sheet">
+      <h2 style="margin-top:0;text-transform:none;letter-spacing:-0.03em;font-size:22px;color:#1c1c1e">Impostazioni</h2>
+      <label>Nome dispositivo<input id="set-name"></label>
+      <label>Cartella download<input id="set-folder"></label>
+      <button class="ghost" id="pick-folder" type="button" style="margin-top:8px">Scegli cartella</button>
+      <label>Dimensione massima<input id="set-limit"></label>
+      <label>Trasferimenti simultanei<input id="set-slots"></label>
+      <div class="trusted" id="trusted"></div>
+      <div class="row">
+        <button class="ghost" id="settings-close" type="button">Chiudi</button>
+        <button class="primary" id="settings-save" type="button">Salva</button>
+      </div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+  <script>
+    const urlEl = document.getElementById("url");
+    const folderEl = document.getElementById("folder");
+    const sharesEl = document.getElementById("shares");
+    const activityEl = document.getElementById("activity");
+    const modal = document.getElementById("modal");
+    let promptKind = "";
+
+    function toast(text) {
+      const node = document.getElementById("toast");
+      node.textContent = text;
+      node.classList.add("show");
+      setTimeout(() => node.classList.remove("show"), 1600);
+    }
+
+    function rows(target, items, empty) {
+      target.innerHTML = "";
+      if (!items.length) {
+        const note = document.createElement("p");
+        note.className = "empty";
+        note.textContent = empty;
+        target.appendChild(note);
+        return;
+      }
+      items.forEach((text) => {
+        const row = document.createElement("div");
+        row.className = "item";
+        row.textContent = text;
+        target.appendChild(row);
+      });
+    }
+
+    window.localdrop = {
+      link(urls, pin, folder, qr) {
+        const ready = urls.length && !urls[0].includes("127.0.0.1");
+        urlEl.textContent = ready ? urls[0] : "Collega il cavo e attiva Hotspot personale sul telefono.";
+        document.getElementById("hint").textContent = ready
+          ? "Inquadra il codice: si apre già dentro, senza scrivere indirizzo né codice. Vale anche col solo cavo USB."
+          : "Senza Wi-Fi: collega il telefono col cavo e attiva Hotspot personale. Il computer non ha bisogno di internet.";
+        const image = document.getElementById("qr");
+        if (ready && qr) { image.src = qr; image.hidden = false; } else { image.hidden = true; }
+        const parts = (pin || "••• •••").split(" ");
+        document.getElementById("pin-a").textContent = parts[0] || "•••";
+        document.getElementById("pin-b").textContent = parts[1] || "•••";
+        folderEl.textContent = folder ? "Cartella predefinita: " + folder : "";
+        const inboxFolder = document.getElementById("inbox-folder");
+        if (folder && !inboxFolder.value) inboxFolder.value = folder;
+      },
+      shares(items) {
+        sharesEl.innerHTML = "";
+        if (!items.length) {
+          const note = document.createElement("p");
+          note.className = "empty";
+          note.textContent = "Nessun file scelto.";
+          sharesEl.appendChild(note);
+          return;
+        }
+        items.forEach((item) => {
+          const row = document.createElement("div");
+          row.className = "item";
+          if (item.preview) {
+            const img = document.createElement("img");
+            img.className = "preview";
+            img.src = item.preview;
+            row.appendChild(img);
+          }
+          row.appendChild(document.createTextNode(item.name));
+          sharesEl.appendChild(row);
+        });
+      },
+      sent(items) {
+        const box = document.getElementById("sent");
+        box.innerHTML = "";
+        if (!items.length) return;
+        const note = document.createElement("p");
+        note.className = "empty";
+        note.textContent = "Già inviati. Reinvia senza scegliere di nuovo il file.";
+        box.appendChild(note);
+        items.forEach((item) => {
+          const row = document.createElement("div");
+          row.className = "item";
+          row.appendChild(document.createTextNode(item.name));
+          const button = document.createElement("button");
+          button.className = "ghost";
+          button.type = "button";
+          button.textContent = "Reinvia";
+          button.style.marginTop = "8px";
+          button.style.width = "100%";
+          button.onclick = () => pywebview.api.resend_share(item.id);
+          row.appendChild(button);
+          box.appendChild(row);
+        });
+      },
+      inbox(items) {
+        const box = document.getElementById("inbox");
+        const empty = document.getElementById("inbox-empty");
+        box.innerHTML = "";
+        empty.style.display = items.length ? "none" : "block";
+        items.forEach((item) => {
+          const label = document.createElement("label");
+          label.className = "item";
+          const input = document.createElement("input");
+          input.type = "checkbox";
+          input.checked = true;
+          input.dataset.id = item.id;
+          label.appendChild(input);
+          if (item.preview) {
+            const img = document.createElement("img");
+            img.className = "preview";
+            img.src = item.preview;
+            label.appendChild(img);
+          }
+          label.appendChild(document.createTextNode(" " + item.name));
+          if (item.meta && item.meta.length) {
+            const meta = document.createElement("div");
+            meta.className = "meta";
+            meta.textContent = item.meta.join("\n");
+            label.appendChild(meta);
+          }
+          box.appendChild(label);
+          const send = document.createElement("button");
+          send.className = "ghost";
+          send.type = "button";
+          send.textContent = "Manda al telefono";
+          send.style.marginTop = "8px";
+          send.style.width = "100%";
+          send.onclick = () => pywebview.api.offer_incoming([item.id]);
+          box.appendChild(send);
+        });
+      },
+      log(line) {
+        const current = [...activityEl.querySelectorAll(".item")].map((node) => node.textContent);
+        current.unshift(line);
+        rows(activityEl, current.slice(0, 40), "Nessun trasferimento.");
+      },
+      progress(item) {
+        const pct = item.total ? Math.round(item.sent * 100 / item.total) : 0;
+        document.getElementById("bar-fill").style.width = pct + "%";
+        document.getElementById("bar-label").textContent = item.name + "  " + pct + "%";
+      },
+      ask(kind, title, body) {
+        promptKind = kind;
+        document.getElementById("modal-title").textContent = title;
+        document.getElementById("modal-body").textContent = body;
+        modal.classList.add("show");
+      },
+      settings(data) {
+        document.getElementById("set-name").value = data.device_name;
+        document.getElementById("set-folder").value = data.download_dir;
+        document.getElementById("set-limit").value = data.max_file_bytes;
+        document.getElementById("set-slots").value = data.max_concurrent_transfers;
+        const box = document.getElementById("trusted");
+        box.innerHTML = "";
+        data.trusted.forEach((item) => {
+          const button = document.createElement("button");
+          button.className = "ghost";
+          button.type = "button";
+          button.textContent = "Rimuovi " + item[1];
+          button.onclick = () => pywebview.api.forget(item[0]);
+          box.appendChild(button);
+        });
+        document.getElementById("settings-modal").classList.add("show");
+      }
+    };
+
+    document.getElementById("copy").onclick = async () => {
+      const value = urlEl.textContent;
+      if (!value.startsWith("http")) return;
+      await pywebview.api.copy_text(value);
+      toast("Indirizzo copiato");
+    };
+    function selectedInbox() {
+      return [...document.querySelectorAll("#inbox input:checked")].map((node) => node.dataset.id);
+    }
+    document.getElementById("inbox-pick").onclick = async () => {
+      const folder = await pywebview.api.pick_folder();
+      if (folder) document.getElementById("inbox-folder").value = folder;
+    };
+    document.getElementById("inbox-save").onclick = () => {
+      pywebview.api.save_incoming(selectedInbox(), document.getElementById("inbox-folder").value);
+    };
+    document.getElementById("inbox-drop").onclick = () => pywebview.api.discard_incoming(selectedInbox());
+    document.getElementById("choose").onclick = () => pywebview.api.choose_files();
+    document.getElementById("clear").onclick = () => pywebview.api.clear_shares();
+    document.getElementById("settings").onclick = () => pywebview.api.open_settings();
+    document.getElementById("settings-close").onclick = () => document.getElementById("settings-modal").classList.remove("show");
+    document.getElementById("settings-save").onclick = () => {
+      pywebview.api.save_settings(
+        document.getElementById("set-name").value,
+        document.getElementById("set-folder").value,
+        document.getElementById("set-limit").value,
+        document.getElementById("set-slots").value
+      );
+      document.getElementById("settings-modal").classList.remove("show");
+    };
+    document.getElementById("pick-folder").onclick = async () => {
+      const folder = await pywebview.api.pick_folder();
+      if (folder) document.getElementById("set-folder").value = folder;
+    };
+    document.getElementById("modal-yes").onclick = () => { modal.classList.remove("show"); pywebview.api.answer(true); };
+    document.getElementById("modal-no").onclick = () => { modal.classList.remove("show"); pywebview.api.answer(false); };
+  </script>
+</body>
+</html>
