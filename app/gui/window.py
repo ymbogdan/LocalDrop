@@ -141,7 +141,7 @@ class MainWindow:
             width=640,
             height=980,
             min_size=(520, 760),
-            background_color="#E7EEF4",
+            background_color="#12141A",
         )
         self.window.events.loaded += lambda: threading.Thread(target=self._pump, daemon=True).start()
         self.window.events.closing += self.close

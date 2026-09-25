@@ -6,47 +6,61 @@
   <title>LocalDrop</title>
   <link rel="stylesheet" href="glass.css">
 </head>
-<body>
+<body class="desktop">
   <div class="shell">
-    <div class="top">
-      <button class="icon-btn" id="settings" type="button">⚙</button>
-    </div>
-    <h1>LocalDrop</h1>
-    <p class="subtitle" id="hint">Senza Wi-Fi: collega il telefono col cavo e attiva Hotspot personale. Il computer non ha bisogno di internet.</p>
+    <header class="head">
+      <div class="logo-wrap"><h1 class="depth" id="logo">LocalDrop</h1></div>
+      <div class="top">
+        <button class="squish" id="theme" type="button" role="switch" aria-checked="true" aria-label="Stile">
+          <span class="squish-knob">
+            <img class="squish-moon" src="../../svg-animazioni/moon.svg" alt="">
+            <img class="squish-sun" src="../../svg-animazioni/sun.svg" alt="">
+          </span>
+        </button>
+        <button class="glass-ico" id="settings" type="button" aria-label="Impostazioni">
+          <span class="glass-glow"></span>
+          <span class="gear"></span>
+        </button>
+      </div>
+    </header>
     <section class="glass">
-      <h2>Indirizzo</h2>
-      <img id="qr" class="qr" alt="Codice QR" hidden>
-      <div class="url" id="url">In attesa della rete…</div>
-      <div class="pin"><span id="pin-a">•••</span><span id="pin-b">•••</span></div>
-      <div class="row">
-        <button class="primary" id="copy" type="button">Copia indirizzo</button>
+      <h2 class="address-title">Indirizzo - <span class="url" id="url">In attesa della rete…</span></h2>
+      <div class="address-line">
+        <div class="address-copy">
+          <div class="pin">
+            <span id="pin-a">000</span>
+            <span id="pin-b">000</span>
+          </div>
+          <button class="primary copy-btn" id="copy" type="button"><img class="btn-ico" src="../../svg-animazioni/cartoon-copy.svg" alt="">Copia indirizzo</button>
+        </div>
+        <img id="qr" class="qr" alt="Codice QR" hidden>
       </div>
       <div class="folder" id="folder"></div>
     </section>
     <section class="glass">
-      <h2>Verso il telefono</h2>
+      <h2 class="with-ico"><img src="../../svg-animazioni/upload.svg" alt="">Verso il telefono</h2>
       <div class="list" id="shares"><p class="empty">Nessun file scelto.</p></div>
       <div class="list" id="sent"></div>
       <div class="row">
-        <button class="primary" id="choose" type="button">Scegli file</button>
-        <button class="ghost" id="clear" type="button">Svuota</button>
+        <button class="primary" id="choose" type="button"><img class="btn-ico" src="../../svg-animazioni/upload.svg" alt="">Scegli file</button>
+        <button class="ghost" id="clear" type="button"><img class="btn-ico" src="../../svg-animazioni/trash-bin.svg" alt="">Svuota</button>
       </div>
     </section>
     <section class="glass">
-      <h2>Dal telefono</h2>
+      <h2 class="with-ico"><img src="../../svg-animazioni/solid-download.svg" alt="">Dal telefono</h2>
       <p class="empty" id="inbox-empty">Nessun file in attesa.</p>
       <div class="list" id="inbox"></div>
-      <label class="folder">Cartella<input id="inbox-folder" style="width:100%;margin-top:6px;border-radius:14px;border:1px solid rgba(60,60,67,.16);padding:12px;font:inherit"></label>
+      <label class="folder">Cartella<input id="inbox-folder" class="field"></label>
       <div class="row">
-        <button class="ghost" id="inbox-pick" type="button">Scegli cartella</button>
+        <button class="ghost" id="inbox-pick" type="button"><img class="btn-ico" src="../../svg-animazioni/folder.svg" alt="">Scegli cartella</button>
       </div>
       <div class="row">
-        <button class="primary" id="inbox-save" type="button">Salva i selezionati</button>
-        <button class="ghost" id="inbox-drop" type="button">Scarta</button>
+        <button class="primary" id="inbox-save" type="button"><img class="btn-ico" src="../../svg-animazioni/save.svg" alt="">Salva i selezionati</button>
+        <button class="ghost" id="inbox-drop" type="button"><img class="btn-ico" src="../../svg-animazioni/trash-bin.svg" alt="">Scarta</button>
       </div>
     </section>
     <section class="glass">
-      <h2>Attività</h2>
+      <h2 class="with-ico"><img src="../../svg-animazioni/history.svg" alt="">Attività</h2>
       <div class="bar"><div id="bar-fill"></div></div>
       <p class="hint" id="bar-label"></p>
       <div class="list activity" id="activity"><p class="empty">Nessun trasferimento.</p></div>
@@ -54,26 +68,26 @@
   </div>
   <div class="modal" id="modal">
     <div class="sheet">
-      <h2 id="modal-title" style="margin-top:0;text-transform:none;letter-spacing:-0.03em;font-size:22px;color:#1c1c1e">LocalDrop</h2>
+      <h2 id="modal-title" class="sheet-title">LocalDrop</h2>
       <p id="modal-body"></p>
       <div class="row">
-        <button class="ghost" id="modal-no" type="button">Annulla</button>
-        <button class="primary" id="modal-yes" type="button">Conferma</button>
+        <button class="ghost" id="modal-no" type="button"><img class="btn-ico" src="../../svg-animazioni/cartoon-close-cross.svg" alt="">Annulla</button>
+        <button class="primary" id="modal-yes" type="button"><img class="btn-ico" src="../../svg-animazioni/check.svg" alt="">Conferma</button>
       </div>
     </div>
   </div>
   <div class="modal" id="settings-modal">
     <div class="sheet">
-      <h2 style="margin-top:0;text-transform:none;letter-spacing:-0.03em;font-size:22px;color:#1c1c1e">Impostazioni</h2>
+      <h2 class="sheet-title">Impostazioni</h2>
       <label>Nome dispositivo<input id="set-name"></label>
       <label>Cartella download<input id="set-folder"></label>
-      <button class="ghost" id="pick-folder" type="button" style="margin-top:8px">Scegli cartella</button>
+      <button class="ghost" id="pick-folder" type="button" style="margin-top:8px"><img class="btn-ico" src="../../svg-animazioni/folder.svg" alt="">Scegli cartella</button>
       <label>Dimensione massima<input id="set-limit"></label>
       <label>Trasferimenti simultanei<input id="set-slots"></label>
       <div class="trusted" id="trusted"></div>
       <div class="row">
-        <button class="ghost" id="settings-close" type="button">Chiudi</button>
-        <button class="primary" id="settings-save" type="button">Salva</button>
+        <button class="ghost" id="settings-close" type="button"><img class="btn-ico" src="../../svg-animazioni/cartoon-close-cross.svg" alt="">Chiudi</button>
+        <button class="primary" id="settings-save" type="button"><img class="btn-ico" src="../../svg-animazioni/save.svg" alt="">Salva</button>
       </div>
     </div>
   </div>
@@ -85,6 +99,14 @@
     const activityEl = document.getElementById("activity");
     const modal = document.getElementById("modal");
     let promptKind = "";
+
+    function fileMark() {
+      const mark = document.createElement("img");
+      mark.className = "btn-ico file-mark";
+      mark.alt = "";
+      mark.src = "../../svg-animazioni/document.svg";
+      return mark;
+    }
 
     function toast(text) {
       const node = document.getElementById("toast");
@@ -114,14 +136,11 @@
       link(urls, pin, folder, qr) {
         const ready = urls.length && !urls[0].includes("127.0.0.1");
         urlEl.textContent = ready ? urls[0] : "Collega il cavo e attiva Hotspot personale sul telefono.";
-        document.getElementById("hint").textContent = ready
-          ? "Inquadra il codice: si apre già dentro, senza scrivere indirizzo né codice. Vale anche col solo cavo USB."
-          : "Senza Wi-Fi: collega il telefono col cavo e attiva Hotspot personale. Il computer non ha bisogno di internet.";
         const image = document.getElementById("qr");
         if (ready && qr) { image.src = qr; image.hidden = false; } else { image.hidden = true; }
-        const parts = (pin || "••• •••").split(" ");
-        document.getElementById("pin-a").textContent = parts[0] || "•••";
-        document.getElementById("pin-b").textContent = parts[1] || "•••";
+        requestAnimationFrame(fitQr);
+        const parts = (pin || "000 000").replace(/\D/g, "").padStart(6, "0");
+        setPin(parts.slice(0, 3), parts.slice(3, 6));
         folderEl.textContent = folder ? "Cartella predefinita: " + folder : "";
         const inboxFolder = document.getElementById("inbox-folder");
         if (folder && !inboxFolder.value) inboxFolder.value = folder;
@@ -143,6 +162,8 @@
             img.className = "preview";
             img.src = item.preview;
             row.appendChild(img);
+          } else {
+            row.appendChild(fileMark());
           }
           row.appendChild(document.createTextNode(item.name));
           sharesEl.appendChild(row);
@@ -159,11 +180,17 @@
         items.forEach((item) => {
           const row = document.createElement("div");
           row.className = "item";
+          row.appendChild(fileMark());
           row.appendChild(document.createTextNode(item.name));
           const button = document.createElement("button");
           button.className = "ghost";
           button.type = "button";
-          button.textContent = "Reinvia";
+          const mark = document.createElement("img");
+          mark.className = "btn-ico";
+          mark.alt = "";
+          mark.src = "../../svg-animazioni/cartoon-square-arrow-right-enter.svg";
+          button.appendChild(mark);
+          button.appendChild(document.createTextNode("Reinvia"));
           button.style.marginTop = "8px";
           button.style.width = "100%";
           button.onclick = () => pywebview.api.resend_share(item.id);
@@ -189,6 +216,8 @@
             img.className = "preview";
             img.src = item.preview;
             label.appendChild(img);
+          } else {
+            label.appendChild(fileMark());
           }
           label.appendChild(document.createTextNode(" " + item.name));
           if (item.meta && item.meta.length) {
@@ -201,7 +230,12 @@
           const send = document.createElement("button");
           send.className = "ghost";
           send.type = "button";
-          send.textContent = "Manda al telefono";
+          const mark = document.createElement("img");
+          mark.className = "btn-ico";
+          mark.alt = "";
+          mark.src = "../../svg-animazioni/cartoon-square-arrow-right-enter.svg";
+          send.appendChild(mark);
+          send.appendChild(document.createTextNode("Manda al telefono"));
           send.style.marginTop = "8px";
           send.style.width = "100%";
           send.onclick = () => pywebview.api.offer_incoming([item.id]);
@@ -279,6 +313,77 @@
     };
     document.getElementById("modal-yes").onclick = () => { modal.classList.remove("show"); pywebview.api.answer(true); };
     document.getElementById("modal-no").onclick = () => { modal.classList.remove("show"); pywebview.api.answer(false); };
+    function fitQr() {
+      const image = document.getElementById("qr");
+      const pin = document.querySelector(".pin");
+      const button = document.getElementById("copy");
+      if (!image || image.hidden || !pin || !button) return;
+      const size = Math.round(button.getBoundingClientRect().bottom - pin.getBoundingClientRect().top);
+      image.style.width = size + "px";
+      image.style.height = size + "px";
+    }
+    new ResizeObserver(fitQr).observe(document.querySelector(".address-copy"));
+    function setPin(left, right) {
+      document.getElementById("pin-a").textContent = left;
+      document.getElementById("pin-b").textContent = right;
+      requestAnimationFrame(fitQr);
+    }
+    setPin("000", "000");
+    const logo = document.getElementById("logo");
+    const face = logo.textContent;
+    logo.textContent = "";
+    const faceNode = document.createElement("span");
+    faceNode.className = "depth-face";
+    faceNode.textContent = face;
+    logo.appendChild(faceNode);
+    for (let layer = 1; layer <= 34; layer += 1) {
+      const slab = document.createElement("span");
+      slab.className = "depth-layer";
+      slab.setAttribute("aria-hidden", "true");
+      slab.textContent = face;
+      slab.style.transform = "translateZ(" + (-layer * 2.4) + "px)";
+      logo.appendChild(slab);
+    }
+    let aimX = 0;
+    let aimY = 0;
+    let tiltX = 0;
+    let tiltY = 0;
+    let orbit = 0;
+    let lastTick = performance.now();
+    logo.addEventListener("pointermove", (event) => {
+      const box = logo.getBoundingClientRect();
+      aimX = ((event.clientX - box.left) / box.width - 0.5) * 16;
+      aimY = ((event.clientY - box.top) / box.height - 0.5) * -12;
+    });
+    logo.addEventListener("pointerleave", () => { aimX = 0; aimY = 0; });
+    function spinLogo(now) {
+      const step = Math.min(0.05, (now - lastTick) / 1000);
+      lastTick = now;
+      orbit += 0.35 * step;
+      const turnX = Math.sin(orbit) * 7.5;
+      const turnY = Math.cos(orbit * 0.8) * 5;
+      tiltX += (aimX + turnX - tiltX) * 0.14;
+      tiltY += (aimY + turnY - tiltY) * 0.14;
+      logo.style.transform = "rotateX(" + tiltY.toFixed(2) + "deg) rotateY(" + tiltX.toFixed(2) + "deg)";
+      requestAnimationFrame(spinLogo);
+    }
+    requestAnimationFrame(spinLogo);
+    const themeKey = "localdrop-theme";
+    const themeButton = document.getElementById("theme");
+    function paintTheme(dark, animate) {
+      document.body.classList.toggle("dark", dark);
+      themeButton.setAttribute("aria-checked", dark ? "true" : "false");
+      if (!animate) return;
+      themeButton.classList.add("moving");
+      clearTimeout(themeButton._timer);
+      themeButton._timer = setTimeout(() => themeButton.classList.remove("moving"), 320);
+    }
+    paintTheme(localStorage.getItem(themeKey) !== "light", false);
+    themeButton.onclick = () => {
+      const dark = !document.body.classList.contains("dark");
+      localStorage.setItem(themeKey, dark ? "dark" : "light");
+      paintTheme(dark, true);
+    };
   </script>
 </body>
 </html>

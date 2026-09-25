@@ -5,7 +5,7 @@ a = Analysis(
     ['app\\main.py'],
     pathex=['.'],
     binaries=[],
-    datas=[('app/gui/desktop.html', 'app/gui'), ('app/gui/glass.css', 'app/gui')],
+    datas=[('app/gui/desktop.html', 'app/gui'), ('app/gui/glass.css', 'app/gui'), ('svg-animazioni', 'svg-animazioni')],
     hiddenimports=['webview'],
     hookspath=[],
     hooksconfig={},
@@ -35,4 +35,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon='logo-localdrops.ico',
 )

@@ -399,6 +399,19 @@ class _Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(data)
             return
+        if path.startswith("/svg/"):
+            icon = _svg_file(path.removeprefix("/svg/"))
+            if icon is None:
+                self._html(404, _message_page("Pagina non trovata."))
+                return
+            data = icon.read_bytes()
+            self.send_response(200)
+            self.send_header("Content-Type", "image/svg+xml")
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(data)
+            return
         if path == "/glass.css":
             css = _glass_css().encode("utf-8")
             self.send_response(200)
@@ -745,64 +758,113 @@ def _glass_css() -> str:
     return path.read_text(encoding="utf-8")
 
 
+def _svg_file(name: str) -> Path | None:
+    if not re.fullmatch(r"[A-Za-z0-9._-]+\.svg", name):
+        return None
+    root = (Path(__file__).resolve().parent.parent.parent / "svg-animazioni").resolve()
+    target = (root / name).resolve()
+    if target.parent != root or not target.is_file():
+        return None
+    return target
+
+
+def _icon(name: str) -> str:
+    return f"<img class=\"btn-ico\" src=\"/svg/{name}\" alt=\"\">"
+
+
 def _page(body: str) -> str:
     return (
         "<!DOCTYPE html><html lang=\"it\"><head><meta charset=\"utf-8\">"
         "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
         "<title>LocalDrop</title><link rel=\"stylesheet\" href=\"/glass.css\"></head><body>"
-        f"<div class=\"shell\">{body}</div></body></html>"
+        "<div class=\"shell\"><header class=\"head\">"
+        "<div class=\"logo-wrap\"><h1 class=\"depth\" id=\"logo\">LocalDrop</h1></div>"
+        "<div class=\"top\"><button class=\"squish\" id=\"theme\" type=\"button\" role=\"switch\" aria-checked=\"true\" aria-label=\"Stile\">"
+        "<span class=\"squish-knob\">"
+        "<img class=\"squish-moon\" src=\"/svg/moon.svg\" alt=\"\">"
+        "<img class=\"squish-sun\" src=\"/svg/sun.svg\" alt=\"\">"
+        "</span></button></div></header>"
+        f"{body}</div><script>"
+        "const themeKey='localdrop-theme';"
+        "const themeButton=document.getElementById('theme');"
+        "function paintTheme(dark,animate){"
+        "document.body.classList.toggle('dark',dark);"
+        "if(!themeButton)return;"
+        "themeButton.setAttribute('aria-checked',dark?'true':'false');"
+        "if(!animate)return;"
+        "themeButton.classList.add('moving');"
+        "clearTimeout(themeButton._timer);"
+        "themeButton._timer=setTimeout(()=>themeButton.classList.remove('moving'),320);"
+        "}"
+        "paintTheme(localStorage.getItem(themeKey)!=='light',false);"
+        "if(themeButton)themeButton.onclick=()=>{const dark=!document.body.classList.contains('dark');localStorage.setItem(themeKey,dark?'dark':'light');paintTheme(dark,true);};"
+        "const logo=document.getElementById('logo');"
+        "if(logo){const face=logo.textContent;logo.textContent='';"
+        "const faceNode=document.createElement('span');faceNode.className='depth-face';faceNode.textContent=face;logo.appendChild(faceNode);"
+        "for(let layer=1;layer<=34;layer+=1){const slab=document.createElement('span');slab.className='depth-layer';"
+        "slab.setAttribute('aria-hidden','true');slab.textContent=face;slab.style.transform='translateZ('+(-layer*2.4)+'px)';logo.appendChild(slab);}"
+        "let aimX=0,aimY=0,tiltX=0,tiltY=0,orbit=0,lastTick=performance.now();"
+        "logo.addEventListener('pointermove',(event)=>{const box=logo.getBoundingClientRect();"
+        "aimX=((event.clientX-box.left)/box.width-0.5)*16;aimY=((event.clientY-box.top)/box.height-0.5)*-12;});"
+        "logo.addEventListener('pointerleave',()=>{aimX=0;aimY=0;});"
+        "function spinLogo(now){const step=Math.min(0.05,(now-lastTick)/1000);lastTick=now;orbit+=0.35*step;"
+        "const turnX=Math.sin(orbit)*7.5;const turnY=Math.cos(orbit*0.8)*5;"
+        "tiltX+=(aimX+turnX-tiltX)*0.14;tiltY+=(aimY+turnY-tiltY)*0.14;"
+        "logo.style.transform='rotateX('+tiltY.toFixed(2)+'deg) rotateY('+tiltX.toFixed(2)+'deg)';requestAnimationFrame(spinLogo);}"
+        "requestAnimationFrame(spinLogo);}"
+        "</script></body></html>"
     )
 
 
 def _login_page(message: str) -> str:
     note = f"<p class=\"note\">{_esc(message)}</p>" if message else ""
     return _page(
-        "<h1>LocalDrop</h1><p class=\"subtitle\">Inserisci il codice che vedi sul computer.</p>"
+        "<p class=\"subtitle\">Inserisci il codice che vedi sul computer.</p>"
         + note
         + "<section class=\"glass\"><form method=\"post\" action=\"/unlock\">"
         + "<input class=\"code-input\" name=\"pin\" inputmode=\"numeric\" autocomplete=\"off\" autofocus placeholder=\"Inserisci il codice\">"
-        + "<button class=\"primary\" type=\"submit\">Entra</button></form></section>"
+        + f"<button class=\"primary\" type=\"submit\">{_icon('check.svg')}Entra</button></form></section>"
     )
 
 
 def _home_page(shares: list[tuple[str, str]], received: list[str], sent: list[tuple[str, str]], notice: str, error: str) -> str:
-    parts = ["<h1>LocalDrop</h1>"]
+    parts = []
     if notice:
         parts.append(f"<p class=\"note\">{_esc(notice)}</p>")
     if error:
         parts.append(f"<p class=\"note\">{_esc(error)}</p>")
-    parts.append("<section class=\"glass\"><h2>Invia al computer</h2>")
+    parts.append("<section class=\"glass lead\"><h2 class=\"with-ico\"><img src=\"/svg/upload.svg\" alt=\"\">Invia al computer</h2>")
     parts.append("<div class=\"bar\"><div id=\"bar-fill\"></div></div><p class=\"hint\" id=\"bar-label\"></p>")
     parts.append("<div class=\"list\" id=\"local-preview\"></div>")
     parts.append("<form class=\"upload\" method=\"post\" action=\"/upload\" enctype=\"multipart/form-data\">")
     parts.append("<input id=\"files\" type=\"file\" name=\"files\" multiple required>")
-    parts.append("<button class=\"primary\" type=\"submit\">Invia al computer</button></form>")
+    parts.append(f"<button class=\"primary\" type=\"submit\">{_icon('upload.svg')}Invia al computer</button></form>")
     if sent:
         parts.append("<p class=\"empty\" style=\"margin-top:12px\">Già inviati. Reinvia senza scegliere di nuovo il file.</p><div class=\"list\">")
         for file_id, name in sent:
             parts.append(
-                f"<form method=\"post\" action=\"/resend/{file_id}\"><div class=\"item\">{_esc(name)}"
-                "<button class=\"ghost\" type=\"submit\" style=\"margin-top:8px;width:100%\">Reinvia</button></div></form>"
+                f"<form method=\"post\" action=\"/resend/{file_id}\"><div class=\"item\">{_icon('document.svg')}{_esc(name)}"
+                f"<button class=\"ghost\" type=\"submit\" style=\"margin-top:8px;width:100%\">{_icon('cartoon-square-arrow-right-enter.svg')}Reinvia</button></div></form>"
             )
         parts.append("</div>")
     if received:
         parts.append("<p class=\"empty\" style=\"margin-top:12px\">In attesa sul computer</p><div class=\"list\">")
         for name in received:
-            parts.append(f"<div class=\"item\">{_esc(name)}</div>")
+            parts.append(f"<div class=\"item\">{_icon('document.svg')}{_esc(name)}</div>")
         parts.append("</div>")
-    parts.append("</section><section class=\"glass\"><h2>Scarica dal computer</h2>")
+    parts.append("</section><section class=\"glass\"><h2 class=\"with-ico\"><img src=\"/svg/solid-download.svg\" alt=\"\">Scarica dal computer</h2>")
     if not shares:
         parts.append("<p class=\"empty\">Nessun file. Sul computer scegli i file da mandare al telefono.</p>")
     else:
         parts.append("<div class=\"list\">")
         for file_id, name in shares:
             kind, _mime = _media_kind(name)
-            parts.append(f"<a class=\"file-link secondary\" href=\"/file/{file_id}\" data-name=\"{_esc(name)}\">{_esc(name)}</a>")
+            parts.append(f"<a class=\"file-link secondary\" href=\"/file/{file_id}\" data-name=\"{_esc(name)}\">{_icon('document.svg')}{_esc(name)}</a>")
             if kind == "image":
                 parts.append(f"<img class=\"preview\" src=\"/preview/{file_id}\" alt=\"\">")
-                parts.append(f"<a class=\"primary\" href=\"/view/{file_id}\" style=\"margin-top:8px\">Salva in Foto</a>")
+                parts.append(f"<a class=\"primary\" href=\"/view/{file_id}\" style=\"margin-top:8px\">{_icon('save.svg')}Salva in Foto</a>")
             elif kind == "video":
-                parts.append(f"<a class=\"primary\" href=\"/view/{file_id}\" style=\"margin-top:8px\">Salva video in Foto</a>")
+                parts.append(f"<a class=\"primary\" href=\"/view/{file_id}\" style=\"margin-top:8px\">{_icon('save.svg')}Salva video in Foto</a>")
         parts.append("</div>")
     parts.append("</section>")
     parts.append(
@@ -839,9 +901,9 @@ def _gallery_page(file_id: str, name: str) -> str:
         media = f"<video class=\"preview\" src=\"/raw/{file_id}\" controls playsinline style=\"max-height:70vh\"></video>"
         hint = "Tieni premuto il video e scegli Salva video. Va in Foto, con la qualità originale."
     return _page(
-        f"<h1>{_esc(name)}</h1><section class=\"glass\">{media}"
+        f"<section class=\"glass\"><h2>{_esc(name)}</h2>{media}"
         f"<p class=\"subtitle\">{hint}</p>"
-        f"<a class=\"primary\" href=\"/\">Torna indietro</a></section>"
+        f"<a class=\"primary\" href=\"/\">{_icon('cartoon-close-cross.svg')}Torna indietro</a></section>"
     )
 
 
