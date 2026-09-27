@@ -1,0 +1,163 @@
+from __future__ import annotations
+
+TEXT = {
+    "en": {
+        "theme": "Style",
+        "enter_code": "Enter the code shown on the computer.",
+        "pin_prompt": "Enter the code you see on the computer.",
+        "pin_placeholder": "8 digits",
+        "enter": "Enter",
+        "scan_qr": "Scan the QR",
+        "scan_hint": "Point the camera at the code on the computer.",
+        "scan_close": "Close",
+        "scan_bad": "That code is not from this computer.",
+        "scan_denied": "Camera blocked. Allow it, or type the code.",
+        "scan_missing": "This browser cannot open the camera. Type the code.",
+        "qr_expired": "The QR code expired. Enter the code shown on the computer.",
+        "bad_request": "Invalid request.",
+        "bad_pin": "Wrong code.",
+        "send_computer": "Send to computer",
+        "send_to_computer": "Send to computer",
+        "already_sent": "Already sent. Send again without choosing the file again.",
+        "resend": "Send again",
+        "waiting_computer": "Waiting on the computer",
+        "notes": "Notes",
+        "clip_closed": "On the computer, turn on Share notes.",
+        "clip_placeholder": "Password, code, link, text…",
+        "download_computer": "Download from the computer",
+        "no_share": "No files. On the computer, choose the files to send to the phone.",
+        "save_photos": "Save to Photos",
+        "save_video": "Save video to Photos",
+        "notice_ok": "Waiting on the computer. Choose there which ones to save.",
+        "notice_ok_time": "Waiting on the computer. Choose there which ones to save. Loaded in {time}.",
+        "too_big": "File is too large.",
+        "not_found": "File not found.",
+        "no_preview": "Preview unavailable.",
+        "page_missing": "Page not found.",
+        "none_received": "No file received.",
+        "lan_only": "Access is allowed only from the home network.",
+        "hold_photo": "Hold the photo and choose Save Image. It goes to Photos at the original quality.",
+        "hold_video": "Hold the video and choose Save Video. It goes to Photos at the original quality.",
+        "back": "Back",
+        "clear_history": "Clear history",
+        "history_cleared": "Cleared",
+        "sending": "Sending",
+        "from_computer": "From the computer",
+        "sent_computer": "Sent to the computer",
+        "copy": "Copy",
+        "clip_open": "Files and texts delete themselves after {minutes} minutes.",
+        "seconds_left": "{left} s left",
+        "file_missing": "File no longer found: {name}",
+        "again_phone": "Back on the phone: {name}",
+        "pin_regenerated": "Access code regenerated",
+        "waiting": "Waiting: {name}",
+        "waiting_time": "Waiting: {name} · {time}",
+        "folder_unavailable": "Folder unavailable",
+        "saved": "Saved: {path}",
+        "save_failed": "Could not save",
+        "expired_deleted": "File expired and deleted",
+        "expired_phone": "File expired on the phone",
+        "toward_phone": "To the phone: {name}",
+        "toward_phone_time": "To the phone: {name} · {time}",
+        "text_sent": "Text sent to the phone",
+        "notes_off": "Turn on Share notes, or the text is empty.",
+        "device_unavailable": "Device unavailable.",
+        "clip_on_computer": "Text copied to the computer clipboard",
+        "pair_title": "Pairing",
+        "pair_body": "{name}\n\nFingerprint:\n{fingerprint}\n\nCode:\n{code}\n\nDo the codes match?",
+        "incoming_title": "Incoming file",
+        "incoming_body": "{name}\n{size} bytes\n\nFrom:\n{sender}",
+    },
+    "it": {
+        "theme": "Stile",
+        "enter_code": "Inserisci il codice mostrato sul computer.",
+        "pin_prompt": "Inserisci il codice che vedi sul computer.",
+        "pin_placeholder": "8 cifre",
+        "enter": "Entra",
+        "scan_qr": "Scansiona il QR",
+        "scan_hint": "Inquadra il codice sul computer.",
+        "scan_close": "Chiudi",
+        "scan_bad": "Quel codice non è di questo computer.",
+        "scan_denied": "Fotocamera bloccata. Consenti l'accesso, oppure scrivi il codice.",
+        "scan_missing": "Questo browser non apre la fotocamera. Scrivi il codice.",
+        "qr_expired": "Il codice QR è scaduto. Inserisci il codice mostrato sul computer.",
+        "bad_request": "Richiesta non valida.",
+        "bad_pin": "Codice sbagliato.",
+        "send_computer": "Invia al computer",
+        "send_to_computer": "Manda al computer",
+        "already_sent": "Già inviati. Reinvia senza scegliere di nuovo il file.",
+        "resend": "Reinvia",
+        "waiting_computer": "In attesa sul computer",
+        "notes": "Appunti",
+        "clip_closed": "Sul computer attiva Condividi appunti.",
+        "clip_placeholder": "Password, codice, link, testo…",
+        "download_computer": "Scarica dal computer",
+        "no_share": "Nessun file. Sul computer scegli i file da mandare al telefono.",
+        "save_photos": "Salva in Foto",
+        "save_video": "Salva video in Foto",
+        "notice_ok": "In attesa sul computer. Scegli lì quali salvare.",
+        "notice_ok_time": "In attesa sul computer. Scegli lì quali salvare. Caricato in {time}.",
+        "too_big": "File troppo grande.",
+        "not_found": "File non trovato.",
+        "no_preview": "Anteprima non disponibile.",
+        "page_missing": "Pagina non trovata.",
+        "none_received": "Nessun file ricevuto.",
+        "lan_only": "Accesso consentito solo dalla rete di casa.",
+        "hold_photo": "Tieni premuta la foto e scegli Salva immagine. Va in Foto, con la qualità originale.",
+        "hold_video": "Tieni premuto il video e scegli Salva video. Va in Foto, con la qualità originale.",
+        "back": "Torna indietro",
+        "clear_history": "Svuota cronologia",
+        "history_cleared": "Svuotato",
+        "sending": "Invio",
+        "from_computer": "Dal computer",
+        "sent_computer": "Mandato al computer",
+        "copy": "Copia",
+        "clip_open": "File e testi si cancellano da soli dopo {minutes} minuti.",
+        "seconds_left": "Ancora {left} s",
+        "file_missing": "File non più trovato: {name}",
+        "again_phone": "Di nuovo sul telefono: {name}",
+        "pin_regenerated": "Codice di accesso rigenerato",
+        "waiting": "In attesa: {name}",
+        "waiting_time": "In attesa: {name} · {time}",
+        "folder_unavailable": "Cartella non disponibile",
+        "saved": "Salvato: {path}",
+        "save_failed": "Salvataggio non riuscito",
+        "expired_deleted": "File scaduto e cancellato",
+        "expired_phone": "File scaduto sul telefono",
+        "toward_phone": "Verso il telefono: {name}",
+        "toward_phone_time": "Verso il telefono: {name} · {time}",
+        "text_sent": "Testo mandato al telefono",
+        "notes_off": "Attiva Condividi appunti, oppure il testo è vuoto.",
+        "device_unavailable": "Dispositivo non disponibile.",
+        "clip_on_computer": "Testo negli appunti del computer",
+        "pair_title": "Associazione",
+        "pair_body": "{name}\n\nImpronta:\n{fingerprint}\n\nCodice:\n{code}\n\nI codici coincidono?",
+        "incoming_title": "File in arrivo",
+        "incoming_body": "{name}\n{size} byte\n\nDa:\n{sender}",
+    },
+}
+
+
+def normalize_language(value: object) -> str:
+    text = str(value or "").strip().lower()
+    return text if text in TEXT else "en"
+
+
+def tr(language: str, key: str, **parts: object) -> str:
+    lang = normalize_language(language)
+    template = TEXT[lang].get(key) or TEXT["en"].get(key) or key
+    return template.format(**parts) if parts else template
+
+
+def format_duration(seconds: float) -> str:
+    value = max(0.0, float(seconds))
+    if value < 60:
+        if 0 < value < 0.1:
+            value = 0.1
+        shown = f"{value:.1f}".rstrip("0").rstrip(".")
+        return f"{shown} s"
+    whole = int(round(value))
+    minutes, rest = divmod(whole, 60)
+    if rest == 0:
+        return f"{minutes} min"
+    return f"{minutes} min {rest} s"

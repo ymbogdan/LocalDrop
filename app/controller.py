@@ -7,6 +7,7 @@ import threading
 from pathlib import Path
 
 from app.device.identity import load_or_create
+from app.i18n import normalize_language, tr
 from app.network.discovery import DiscoveryService, Peer
 from app.network.secure_channel import SecureError, SecureNode
 from app.phone.server import PhoneBridge
@@ -47,7 +48,11 @@ class DesktopApp:
             self.settings.download_dir,
             self.settings.max_file_bytes,
             on_event=self._phone_event,
+            cert_dir=self.identity.path.parent,
         )
+        self.phone.share_clipboard = self.settings.share_clipboard
+        self.phone.expire_seconds = self.settings.expire_minutes * 60
+        self.phone.language = self.settings.language
         self.discovery: DiscoveryService | None = None
         self.peers: dict[str, Peer] = {}
         self.sessions = {}
@@ -59,6 +64,7 @@ class DesktopApp:
         )
 
     def start(self) -> None:
+        self.events.put(("language", self.settings.language))
         self.phone.start()
         threading.Thread(target=self._run_loop, daemon=True).start()
 
@@ -95,10 +101,17 @@ class DesktopApp:
     async def _commands(self) -> None:
         last_link = None
         while True:
-            link = (tuple(self.phone.urls()), self.phone.pin_text, str(self.phone.download_dir))
+            link = (
+                tuple(self.phone.urls()),
+                self.phone.pin_text,
+                str(self.phone.download_dir),
+                self.phone.fresh_ticket(),
+                self.phone.cert_fingerprint,
+            )
             if link != last_link:
                 last_link = link
-                self.events.put(("phone-link", list(link[0]), link[1], link[2]))
+                self.events.put(("phone-link", list(link[0]), link[1], link[2], link[3], link[4]))
+                self.phone.publish_clips()
             await asyncio.sleep(0.2)
             try:
                 command = self.commands.get_nowait()
@@ -116,6 +129,8 @@ class DesktopApp:
                 self.phone.share([Path(path) for path in command[1]])
             elif kind == "clear-shares":
                 self.phone.clear_shares()
+            elif kind == "clear-history":
+                self.phone.clear_history()
             elif kind == "resend-share":
                 self.phone.resend_share(command[1])
             elif kind == "offer-incoming":
@@ -133,10 +148,24 @@ class DesktopApp:
                     "download_dir": str(self.settings.download_dir),
                     "max_file_bytes": self.settings.max_file_bytes,
                     "max_concurrent_transfers": self.settings.max_concurrent_transfers,
+                    "share_clipboard": self.settings.share_clipboard,
+                    "expire_minutes": self.settings.expire_minutes,
                     "trusted": trusted,
                 }))
             elif kind == "save-settings":
-                self._save_settings(command[1], command[2], command[3], command[4])
+                self._save_settings(command[1], command[2], command[3], command[4], command[5], command[6])
+            elif kind == "set-language":
+                self.phone.set_language(command[1])
+            elif kind == "share-clipboard":
+                self.settings.share_clipboard = bool(command[1])
+                self.settings.save(self.settings_path)
+                self.phone.share_clipboard = self.settings.share_clipboard
+                self.phone.publish_clips()
+            elif kind == "clip-to-phone":
+                if self.phone.push_clip(str(command[1]), "pc"):
+                    self.events.put(("phone-log", tr(self.settings.language, "text_sent")))
+                else:
+                    self.events.put(("error", tr(self.settings.language, "notes_off")))
             elif kind == "forget":
                 self.node.trust.forget(command[1])
                 self._publish_devices()
@@ -144,7 +173,7 @@ class DesktopApp:
     async def _send(self, device_id: str, paths: list[str]) -> None:
         peer = self.peers.get(device_id)
         if peer is None:
-            self.events.put(("error", "Dispositivo non disponibile."))
+            self.events.put(("error", tr(self.settings.language, "device_unavailable")))
             return
         try:
             session = self.sessions.get(device_id)
@@ -157,18 +186,27 @@ class DesktopApp:
         except OSError as exc:
             self.events.put(("error", str(exc)))
 
-    def _save_settings(self, name: str, folder: str, limit: str, slots: str) -> None:
+    def _save_settings(self, name: str, folder: str, limit: str, slots: str, minutes: str, share: str) -> None:
         try:
             self.identity.rename(name)
             self.node.device_name = self.identity.device_name
             self.settings.download_dir = Path(folder)
             self.settings.max_file_bytes = int(limit)
             self.settings.max_concurrent_transfers = int(slots)
+            try:
+                chosen = int(minutes)
+            except (TypeError, ValueError):
+                chosen = 5
+            self.settings.expire_minutes = min(240, max(1, chosen))
+            self.settings.share_clipboard = str(share).lower() in {"1", "true", "on", "yes"}
             self.settings.save(self.settings_path)
             self.transfers.download_dir = self.settings.download_dir
             self.transfers.limits = self._limits()
             self.phone.download_dir = self.settings.download_dir
             self.phone.max_file_bytes = self.settings.max_file_bytes
+            self.phone.expire_seconds = self.settings.expire_minutes * 60
+            self.phone.share_clipboard = self.settings.share_clipboard
+            self.phone.publish_clips()
         except ValueError as exc:
             self.events.put(("error", str(exc)))
 
@@ -190,4 +228,8 @@ class DesktopApp:
         self.events.put(("progress", transfer_id, name, sent, total, speed, eta, state))
 
     def _phone_event(self, kind: str, payload: object) -> None:
+        if kind == "language":
+            self.settings.language = normalize_language(payload)
+            self.settings.save(self.settings_path)
+            self.phone.language = self.settings.language
         self.events.put((kind, payload))

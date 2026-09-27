@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import secrets
 import tempfile
 import unittest
+import urllib.parse
 import uuid
 from pathlib import Path
 
@@ -19,7 +21,7 @@ from app.network.secure_session import (
 )
 from app.security.crypto_identity import load_or_create_crypto
 from app.security.integrity import hash_file
-from app.security.limits import Limits
+from app.security.limits import Limits, transfer_budget
 from app.security.pairing import format_verification_code, verification_code
 from app.security.trust import TrustDecision, TrustStore
 from app.security.validation import SecurityError, destination_path, validate_file_size, validate_filename
@@ -50,6 +52,18 @@ class ValidationTests(unittest.TestCase):
         with self.assertRaises(SecurityError) as caught:
             validate_filename("../../malicious.txt")
         self.assertEqual(caught.exception.code, "REJECTED")
+        with self.assertRaises(SecurityError):
+            validate_filename("%252e%252e%252fmalicious.txt")
+        with self.assertRaises(SecurityError):
+            validate_filename("CON")
+        with self.assertRaises(SecurityError):
+            validate_filename("COM1.txt")
+        nested = "../segreto.txt"
+        for _ in range(9):
+            nested = urllib.parse.quote(nested, safe="")
+        self.assertEqual(validate_filename(nested), "file")
+        self.assertEqual(transfer_budget(1024), 600)
+        self.assertLessEqual(transfer_budget(8 * 1024 * 1024 * 1024), 4 * 60 * 60)
 
 
 class IdentityAndPairingTests(unittest.TestCase):
@@ -61,6 +75,7 @@ class IdentityAndPairingTests(unittest.TestCase):
             self.assertEqual(first.fingerprint, second.fingerprint)
             self.assertNotIn(b"PRIVATE", first.certificate_pem)
             self.assertTrue(first.key_path.is_file())
+            self.assertFalse(first.key_path.read_bytes().startswith(b"-----BEGIN"))
 
     def test_verification_code_matches_on_both_sides(self) -> None:
         with tempfile.TemporaryDirectory() as root:
@@ -70,6 +85,16 @@ class IdentityAndPairingTests(unittest.TestCase):
             seen_right = verification_code(right.certificate_der, left.certificate_der)
             self.assertEqual(seen_left, seen_right)
             self.assertEqual(len(format_verification_code(seen_left).replace(" ", "")), 6)
+
+    def test_verification_code_sorts_certificate_bytes(self) -> None:
+        import hashlib
+
+        left = b"\x30\x02cert-b"
+        right = b"\x30\x01cert-a"
+        self.assertEqual(verification_code(left, right), verification_code(right, left))
+        digest = hashlib.sha256(right + b"|" + left).digest()
+        number = int.from_bytes(digest[:8], "big") % 1_000_000
+        self.assertEqual(verification_code(left, right), f"{number:06d}")
 
     def test_identity_change_is_not_trusted_automatically(self) -> None:
         with tempfile.TemporaryDirectory() as root:
@@ -83,6 +108,91 @@ class IdentityAndPairingTests(unittest.TestCase):
                 TrustDecision.MISMATCH,
             )
             self.assertEqual(store.evaluate(str(uuid.uuid4()), original.fingerprint), TrustDecision.UNKNOWN)
+
+    def test_tampered_trust_file_is_dropped(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            device_id = str(uuid.uuid4())
+            identity = load_or_create_crypto(Path(root), device_id)
+            store = TrustStore(Path(root) / "trusted.json", identity)
+            store.trust("LAPTOP", identity.certificate_pem)
+            path = Path(root) / "trusted.json"
+            raw = path.read_text(encoding="utf-8").replace("LAPTOP", "INTRUSO")
+            path.write_text(raw, encoding="utf-8")
+            reloaded = TrustStore(path, identity)
+            self.assertIsNone(reloaded.get(identity.device_id))
+
+    def test_new_certificate_lasts_about_a_year(self) -> None:
+        from cryptography import x509
+
+        with tempfile.TemporaryDirectory() as root:
+            identity = load_or_create_crypto(Path(root), str(uuid.uuid4()))
+            certificate = x509.load_pem_x509_certificate(identity.certificate_pem)
+            span = certificate.not_valid_after_utc - certificate.not_valid_before_utc
+            self.assertGreater(span.days, 300)
+            self.assertLess(span.days, 400)
+
+    def test_successor_is_accepted_only_with_the_old_key(self) -> None:
+        from cryptography import x509
+        from cryptography.hazmat.primitives import hashes, serialization
+        from cryptography.hazmat.primitives.asymmetric import ec
+        from cryptography.x509.oid import NameOID
+
+        import datetime
+
+        from app.security.crypto_identity import fingerprint_der
+
+        with tempfile.TemporaryDirectory() as root:
+            device_id = str(uuid.uuid4())
+            created = load_or_create_crypto(Path(root), device_id)
+            key = serialization.load_pem_private_key(created.key_pem, password=None)
+            self.assertIsInstance(key, ec.EllipticCurvePrivateKey)
+            now = datetime.datetime.now(datetime.timezone.utc)
+            name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, device_id)])
+            short = (
+                x509.CertificateBuilder()
+                .subject_name(name)
+                .issuer_name(name)
+                .public_key(key.public_key())
+                .serial_number(x509.random_serial_number())
+                .not_valid_before(now - datetime.timedelta(minutes=1))
+                .not_valid_after(now + datetime.timedelta(days=10))
+                .sign(key, hashes.SHA256())
+            )
+            (Path(root) / "device.crt").write_bytes(short.public_bytes(serialization.Encoding.PEM))
+            current = load_or_create_crypto(Path(root), device_id)
+            self.assertTrue(current.successor_proof)
+            self.assertTrue((Path(root) / "device.next.crt").is_file())
+            store = TrustStore(Path(root) / "trusted.json")
+            store.trust("LAPTOP", current.certificate_pem)
+            self.assertTrue(
+                store.accept_successor(device_id, current.successor_certificate_pem, current.successor_proof)
+            )
+            successor = x509.load_pem_x509_certificate(current.successor_certificate_pem)
+            successor_fingerprint = fingerprint_der(successor.public_bytes(serialization.Encoding.DER))
+            self.assertEqual(store.evaluate(device_id, current.fingerprint), TrustDecision.MATCH)
+            self.assertEqual(store.evaluate(device_id, successor_fingerprint), TrustDecision.MATCH)
+            stranger = load_or_create_crypto(Path(root) / "stranger", device_id)
+            self.assertFalse(
+                store.accept_successor(device_id, stranger.certificate_pem, current.successor_proof)
+            )
+            self.assertEqual(store.evaluate(device_id, stranger.fingerprint), TrustDecision.MISMATCH)
+
+    def test_corrupt_trust_file_resets_without_loading_the_backup(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            device_id = str(uuid.uuid4())
+            identity = load_or_create_crypto(Path(root) / "me", device_id)
+            path = Path(root) / "trusted.json"
+            store = TrustStore(path, identity)
+            store.trust("LAPTOP", identity.certificate_pem)
+            backup = Path(str(path) + ".bak")
+            self.assertTrue(backup.is_file())
+            path.write_text("{", encoding="utf-8")
+            reloaded = TrustStore(path, identity)
+            self.assertIsNone(reloaded.get(identity.device_id))
+            path.unlink()
+            fresh = TrustStore(path, identity)
+            self.assertIsNone(fresh.get(identity.device_id))
+            self.assertIn(b"LAPTOP", backup.read_bytes())
 
 
 class DiscoveryPrivacyTests(unittest.TestCase):
@@ -185,15 +295,67 @@ class SecureTransferTests(unittest.TestCase):
     def test_replay_from_previous_session_is_rejected(self) -> None:
         async def scenario() -> None:
             async with _Pair() as nodes:
-                code = await _exchange(nodes, HELLO, {"session_id": str(uuid.uuid4()), "protocol_version": PROTOCOL_VERSION, "sequence": 0})
+                code = await _exchange(nodes, HELLO, {"session_id": secrets.token_hex(16), "protocol_version": PROTOCOL_VERSION, "sequence": 0})
                 self.assertNotEqual(code, "REJECTED")
                 rejected = await _exchange(
                     nodes,
                     CHUNK,
-                    {"session_id": str(uuid.uuid4()), "sequence": 1, "offset": 0},
+                    {"session_id": secrets.token_hex(16), "sequence": 1, "offset": 0},
                     b"replay",
                 )
                 self.assertEqual(rejected, "REJECTED")
+
+        _run(scenario())
+
+    def test_captured_hello_is_rejected_on_the_next_connection(self) -> None:
+        async def scenario() -> None:
+            async with _Pair() as nodes:
+                reader, writer = await _connect(nodes)
+                session_id = secrets.token_hex(16)
+                hello = {"session_id": session_id, "protocol_version": PROTOCOL_VERSION, "sequence": 0}
+                try:
+                    await _write_frame(writer, HELLO, hello, nodes.limits)
+                    ack = await _read_frame(reader, nodes.limits)
+                    self.assertEqual(ack[0], 2)
+                finally:
+                    writer.close()
+                    await writer.wait_closed()
+                reader, writer = await _connect(nodes)
+                try:
+                    await _write_frame(writer, HELLO, hello, nodes.limits)
+                    rejected = await _read_frame(reader, nodes.limits)
+                    self.assertEqual(rejected[1].get("code"), "REJECTED")
+                finally:
+                    writer.close()
+                    await writer.wait_closed()
+
+        _run(scenario())
+
+    def test_slow_transfer_hits_the_total_deadline(self) -> None:
+        async def scenario() -> None:
+            async with _Pair() as nodes:
+                from unittest.mock import patch
+
+                reader, writer = await _connect(nodes)
+                try:
+                    with patch("app.network.secure_session.transfer_budget", return_value=0):
+                        session_id = secrets.token_hex(16)
+                        nodes.session_id = session_id
+                        await _write_frame(
+                            writer,
+                            HELLO,
+                            {"session_id": session_id, "protocol_version": PROTOCOL_VERSION, "sequence": 0},
+                            nodes.limits,
+                        )
+                        await _read_frame(reader, nodes.limits)
+                        await _write_frame(writer, TRANSFER_REQUEST, _request(nodes, "slow.bin", 4, "ab" * 32), nodes.limits)
+                        await _read_frame(reader, nodes.limits)
+                        rejected = await _read_frame(reader, nodes.limits)
+                        self.assertEqual(rejected[1].get("code"), "REJECTED")
+                finally:
+                    writer.close()
+                    await writer.wait_closed()
+                self.assertEqual(list(nodes.download.iterdir()), [])
 
         _run(scenario())
 
@@ -229,7 +391,7 @@ class SecureTransferTests(unittest.TestCase):
             async with _Pair() as nodes:
                 reader, writer = await _connect(nodes)
                 try:
-                    session_id = str(uuid.uuid4())
+                    session_id = secrets.token_hex(16)
                     nodes.session_id = session_id
                     await _write_frame(writer, HELLO, {"session_id": session_id, "protocol_version": PROTOCOL_VERSION, "sequence": 0}, nodes.limits)
                     await _read_frame(reader, nodes.limits)
@@ -346,7 +508,7 @@ def _request(nodes: _Pair, filename: str, size: int, digest: str) -> dict:
 async def _exchange(nodes: _Pair, kind: int, header: dict, body: bytes = b"", hello: bool = False) -> str:
     reader, writer = await _connect(nodes)
     try:
-        session_id = str(uuid.uuid4())
+        session_id = secrets.token_hex(16)
         nodes.session_id = session_id
         await _write_frame(
             writer,
@@ -371,7 +533,7 @@ async def _exchange(nodes: _Pair, kind: int, header: dict, body: bytes = b"", he
 async def _raw_transfer(nodes: _Pair, filename: str, payload: bytes, digest: str, size: int) -> None:
     reader, writer = await _connect(nodes)
     try:
-        session_id = str(uuid.uuid4())
+        session_id = secrets.token_hex(16)
         await _write_frame(writer, HELLO, {"session_id": session_id, "protocol_version": PROTOCOL_VERSION, "sequence": 0}, nodes.limits)
         await _read_frame(reader, nodes.limits)
         await _write_frame(

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import unicodedata
 from pathlib import Path
+from urllib.parse import unquote
 
 from app.security.limits import Limits
 
@@ -12,14 +14,38 @@ class SecurityError(Exception):
         self.message = message
 
 
+_RESERVED = {"CON", "PRN", "AUX", "NUL"} | {f"COM{i}" for i in range(1, 10)} | {f"LPT{i}" for i in range(1, 10)}
+_FORBIDDEN = set('<>:"|?*')
+
+
+def decoded_filename(filename: str) -> str:
+    cleaned = filename
+    for _ in range(8):
+        decoded = unquote(cleaned)
+        if decoded == cleaned:
+            break
+        cleaned = decoded
+    else:
+        return "file"
+    return unicodedata.normalize("NFC", cleaned)
+
+
 def validate_filename(filename: object) -> str:
     if not isinstance(filename, str) or not filename or filename != filename.strip():
         raise SecurityError("REJECTED", "Invalid filename")
+    filename = decoded_filename(filename).strip()
+    if not filename or filename != filename.strip():
+        raise SecurityError("REJECTED", "Invalid filename")
     if "\x00" in filename or "/" in filename or "\\" in filename or ":" in filename:
+        raise SecurityError("REJECTED", "Invalid filename")
+    if any(ord(ch) < 32 or ch in _FORBIDDEN for ch in filename):
         raise SecurityError("REJECTED", "Invalid filename")
     if filename in {".", ".."} or ".." in filename:
         raise SecurityError("REJECTED", "Invalid filename")
     if Path(filename).name != filename:
+        raise SecurityError("REJECTED", "Invalid filename")
+    stem = Path(filename).stem.upper()
+    if stem in _RESERVED:
         raise SecurityError("REJECTED", "Invalid filename")
     return filename
 

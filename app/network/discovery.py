@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from app.device.identity import normalize_device_name
+from app.network.adapters import _allowed_indexes
 from app.network.constants import DISCOVERY_PORT, PROTOCOL_VERSION
 
 log = logging.getLogger("localdrop")
@@ -306,9 +307,32 @@ def default_announce_targets(port: int) -> list[tuple[str, int]]:
     return sorted(targets)
 
 
+def local_ipv6_link_networks() -> list[ipaddress.IPv6Network]:
+    found: list[ipaddress.IPv6Network] = []
+    seen: set[str] = set()
+    try:
+        infos = socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET6)
+    except OSError:
+        infos = []
+    for info in infos:
+        raw = str(info[4][0]).split("%", 1)[0]
+        try:
+            ip = ipaddress.ip_address(raw)
+        except ValueError:
+            continue
+        if not isinstance(ip, ipaddress.IPv6Address) or not ip.is_link_local:
+            continue
+        network = ipaddress.IPv6Network(f"{ip}/64", strict=False)
+        if str(network) in seen:
+            continue
+        seen.add(str(network))
+        found.append(network)
+    return found
+
+
 def local_ipv4_networks() -> list[ipaddress.IPv4Interface]:
     found = _windows_ipv4_networks()
-    if found:
+    if found or _allowed_indexes() is not None:
         return found
     networks: list[ipaddress.IPv4Interface] = []
     for address in local_ipv4_addresses():
@@ -356,9 +380,12 @@ def _windows_ipv4_networks() -> list[ipaddress.IPv4Interface]:
     if result != 0:
         return []
     networks: list[ipaddress.IPv4Interface] = []
+    allowed = _allowed_indexes()
     count = min(int(table.dwNumEntries), 64)
     for index in range(count):
         row = table.table[index]
+        if allowed is not None and int(row.dwIndex) not in allowed:
+            continue
         address = socket.inet_ntoa(struct.pack("<L", row.dwAddr))
         mask = socket.inet_ntoa(struct.pack("<L", row.dwMask))
         try:

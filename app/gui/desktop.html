@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -11,59 +11,81 @@
     <header class="head">
       <div class="logo-wrap"><h1 class="depth" id="logo">LocalDrop</h1></div>
       <div class="top">
-        <button class="squish" id="theme" type="button" role="switch" aria-checked="true" aria-label="Stile">
+        <div class="lang" id="lang-switch" role="group" aria-label="Language">
+          <span class="lang-knob"></span>
+          <button class="lang-btn on" id="lang-en" type="button">EN</button>
+          <button class="lang-btn" id="lang-it" type="button">IT</button>
+        </div>
+        <button class="squish" id="theme" type="button" role="switch" aria-checked="true" aria-label="Style" data-i18n-aria="theme">
           <span class="squish-knob">
             <img class="squish-moon" src="../../svg-animazioni/moon.svg" alt="">
             <img class="squish-sun" src="../../svg-animazioni/sun.svg" alt="">
           </span>
         </button>
-        <button class="glass-ico" id="settings" type="button" aria-label="Impostazioni">
+        <button class="glass-ico" id="settings" type="button" aria-label="Settings" data-i18n-aria="settings">
           <span class="glass-glow"></span>
           <span class="gear"></span>
         </button>
       </div>
     </header>
     <section class="glass">
-      <h2 class="address-title">Indirizzo - <span class="url" id="url">In attesa della rete…</span></h2>
+      <h2 class="address-title"><span data-i18n="address">Address</span> - <span class="url" id="url" data-i18n="waiting_network">Waiting for the network…</span></h2>
       <div class="address-line">
         <div class="address-copy">
           <div class="pin">
-            <span id="pin-a">000</span>
-            <span id="pin-b">000</span>
+            <span id="pin-a">0000</span>
+            <span id="pin-b">0000</span>
           </div>
-          <button class="primary copy-btn" id="copy" type="button"><img class="btn-ico" src="../../svg-animazioni/cartoon-copy.svg" alt="">Copia indirizzo</button>
+          <button class="primary copy-btn" id="copy" type="button"><img class="btn-ico" src="../../svg-animazioni/cartoon-copy.svg" alt=""><span data-i18n="copy_address">Copy address</span></button>
         </div>
-        <img id="qr" class="qr" alt="Codice QR" hidden>
+        <img id="qr" class="qr" alt="QR code" data-i18n-alt="qr_alt" hidden>
       </div>
       <div class="folder" id="folder"></div>
+      <p class="hint" id="fingerprint"></p>
     </section>
     <section class="glass">
-      <h2 class="with-ico"><img src="../../svg-animazioni/upload.svg" alt="">Verso il telefono</h2>
-      <div class="list" id="shares"><p class="empty">Nessun file scelto.</p></div>
+      <h2 class="with-ico"><img src="../../svg-animazioni/solid-download.svg" alt=""><span data-i18n="from_phone">From the phone</span></h2>
+      <p class="empty" id="inbox-empty" data-i18n="inbox_empty">No files waiting.</p>
+      <div class="list" id="inbox"></div>
+      <label class="folder"><span data-i18n="folder">Folder</span><input id="inbox-folder" class="field"></label>
+      <div class="row">
+        <button class="ghost" id="inbox-pick" type="button"><img class="btn-ico" src="../../svg-animazioni/folder.svg" alt=""><span data-i18n="pick_folder">Choose folder</span></button>
+      </div>
+      <div class="row">
+        <button class="primary" id="inbox-save" type="button"><img class="btn-ico" src="../../svg-animazioni/save.svg" alt=""><span data-i18n="save_selected">Save selected</span></button>
+        <button class="ghost" id="inbox-drop" type="button"><img class="btn-ico" src="../../svg-animazioni/trash-bin.svg" alt=""><span data-i18n="discard">Discard</span></button>
+      </div>
+    </section>
+    <section class="glass">
+      <h2 class="with-ico"><img src="../../svg-animazioni/upload.svg" alt=""><span data-i18n="to_phone">To the phone</span></h2>
+      <div class="list" id="shares"><p class="empty" data-i18n="no_files">No file chosen.</p></div>
       <div class="list" id="sent"></div>
       <div class="row">
-        <button class="primary" id="choose" type="button"><img class="btn-ico" src="../../svg-animazioni/upload.svg" alt="">Scegli file</button>
-        <button class="ghost" id="clear" type="button"><img class="btn-ico" src="../../svg-animazioni/trash-bin.svg" alt="">Svuota</button>
+        <button class="primary" id="choose" type="button"><img class="btn-ico" src="../../svg-animazioni/upload.svg" alt=""><span data-i18n="choose_files">Choose files</span></button>
+        <button class="ghost" id="clear" type="button"><img class="btn-ico" src="../../svg-animazioni/trash-bin.svg" alt=""><span data-i18n="clear">Clear</span></button>
       </div>
     </section>
     <section class="glass">
-      <h2 class="with-ico"><img src="../../svg-animazioni/solid-download.svg" alt="">Dal telefono</h2>
-      <p class="empty" id="inbox-empty">Nessun file in attesa.</p>
-      <div class="list" id="inbox"></div>
-      <label class="folder">Cartella<input id="inbox-folder" class="field"></label>
-      <div class="row">
-        <button class="ghost" id="inbox-pick" type="button"><img class="btn-ico" src="../../svg-animazioni/folder.svg" alt="">Scegli cartella</button>
-      </div>
-      <div class="row">
-        <button class="primary" id="inbox-save" type="button"><img class="btn-ico" src="../../svg-animazioni/save.svg" alt="">Salva i selezionati</button>
-        <button class="ghost" id="inbox-drop" type="button"><img class="btn-ico" src="../../svg-animazioni/trash-bin.svg" alt="">Scarta</button>
-      </div>
-    </section>
-    <section class="glass">
-      <h2 class="with-ico"><img src="../../svg-animazioni/history.svg" alt="">Attività</h2>
+      <h2 class="with-ico"><img src="../../svg-animazioni/history.svg" alt=""><span data-i18n="activity">Activity</span></h2>
       <div class="bar"><div id="bar-fill"></div></div>
       <p class="hint" id="bar-label"></p>
-      <div class="list activity" id="activity"><p class="empty">Nessun trasferimento.</p></div>
+      <div class="list activity" id="activity"><p class="empty" data-i18n="no_transfers">No transfers.</p></div>
+      <div class="row">
+        <button class="ghost" id="history-clear" type="button"><img class="btn-ico" src="../../svg-animazioni/cartoon-close-cross.svg" alt=""><span data-i18n="clear_history">Clear history</span></button>
+      </div>
+    </section>
+    <section class="glass">
+      <h2 class="with-ico"><img src="../../svg-animazioni/cartoon-copy.svg" alt=""><span data-i18n="notes">Notes</span></h2>
+      <div class="clip-head">
+        <button class="squish" id="clip-share" type="button" role="switch" aria-checked="false" aria-label="Share notes" data-i18n-aria="share_notes">
+          <span class="squish-knob"></span>
+        </button>
+        <span data-i18n="share_notes">Share notes</span>
+      </div>
+      <p class="hint" id="clip-note" data-i18n="clip_note">Waiting files and texts delete themselves.</p>
+      <textarea id="clip-out" class="field" maxlength="20000" placeholder="Or leave empty to send what you already copied" data-i18n-placeholder="clip_placeholder"></textarea>
+      <button class="primary" id="clip-send" type="button" style="margin-top:8px"><img class="btn-ico" src="../../svg-animazioni/cartoon-square-arrow-right-enter.svg" alt=""><span data-i18n="send_phone">Send to phone</span></button>
+      <div class="list" id="clip-list"></div>
     </section>
   </div>
   <div class="modal" id="modal">
@@ -71,23 +93,25 @@
       <h2 id="modal-title" class="sheet-title">LocalDrop</h2>
       <p id="modal-body"></p>
       <div class="row">
-        <button class="ghost" id="modal-no" type="button"><img class="btn-ico" src="../../svg-animazioni/cartoon-close-cross.svg" alt="">Annulla</button>
-        <button class="primary" id="modal-yes" type="button"><img class="btn-ico" src="../../svg-animazioni/check.svg" alt="">Conferma</button>
+        <button class="ghost" id="modal-no" type="button"><img class="btn-ico" src="../../svg-animazioni/cartoon-close-cross.svg" alt=""><span data-i18n="cancel">Cancel</span></button>
+        <button class="primary" id="modal-yes" type="button"><img class="btn-ico" src="../../svg-animazioni/check.svg" alt=""><span data-i18n="confirm">Confirm</span></button>
       </div>
     </div>
   </div>
   <div class="modal" id="settings-modal">
     <div class="sheet">
-      <h2 class="sheet-title">Impostazioni</h2>
-      <label>Nome dispositivo<input id="set-name"></label>
-      <label>Cartella download<input id="set-folder"></label>
-      <button class="ghost" id="pick-folder" type="button" style="margin-top:8px"><img class="btn-ico" src="../../svg-animazioni/folder.svg" alt="">Scegli cartella</button>
-      <label>Dimensione massima<input id="set-limit"></label>
-      <label>Trasferimenti simultanei<input id="set-slots"></label>
+      <h2 class="sheet-title" data-i18n="settings">Settings</h2>
+      <label><span data-i18n="device_name">Device name</span><input id="set-name"></label>
+      <label><span data-i18n="download_folder">Download folder</span><input id="set-folder"></label>
+      <button class="ghost" id="pick-folder" type="button" style="margin-top:8px"><img class="btn-ico" src="../../svg-animazioni/folder.svg" alt=""><span data-i18n="pick_folder">Choose folder</span></button>
+      <label><span data-i18n="max_size">Maximum size</span><input id="set-limit"></label>
+      <label><span data-i18n="simultaneous">Simultaneous transfers</span><input id="set-slots"></label>
+      <label class="checkline"><input id="set-share" type="checkbox"> <span data-i18n="share_notes">Share notes</span></label>
+      <label><span data-i18n="minutes">Minutes before deletion</span><input id="set-expire" inputmode="numeric" value="5"></label>
       <div class="trusted" id="trusted"></div>
       <div class="row">
-        <button class="ghost" id="settings-close" type="button"><img class="btn-ico" src="../../svg-animazioni/cartoon-close-cross.svg" alt="">Chiudi</button>
-        <button class="primary" id="settings-save" type="button"><img class="btn-ico" src="../../svg-animazioni/save.svg" alt="">Salva</button>
+        <button class="ghost" id="settings-close" type="button"><img class="btn-ico" src="../../svg-animazioni/cartoon-close-cross.svg" alt=""><span data-i18n="close">Close</span></button>
+        <button class="primary" id="settings-save" type="button"><img class="btn-ico" src="../../svg-animazioni/save.svg" alt=""><span data-i18n="save">Save</span></button>
       </div>
     </div>
   </div>
@@ -99,6 +123,97 @@
     const activityEl = document.getElementById("activity");
     const modal = document.getElementById("modal");
     let promptKind = "";
+    let lang = "en";
+    let lastLink = null;
+    let lastShares = null;
+    let lastSent = null;
+    let lastClips = null;
+    let lastSettings = null;
+    const STR = {
+      en: {
+        theme: "Style", settings: "Settings", address: "Address", waiting_network: "Waiting for the network…",
+        copy_address: "Copy address", qr_alt: "QR code", from_phone: "From the phone", inbox_empty: "No files waiting.",
+        folder: "Folder", pick_folder: "Choose folder", save_selected: "Save selected", discard: "Discard",
+        to_phone: "To the phone", no_files: "No file chosen.", choose_files: "Choose files", clear: "Clear",
+        activity: "Activity", no_transfers: "No transfers.", clear_history: "Clear history", notes: "Notes", share_notes: "Share notes",
+        clip_note: "Waiting files and texts delete themselves.", clip_placeholder: "Or leave empty to send what you already copied",
+        send_phone: "Send to phone", cancel: "Cancel", confirm: "Confirm", device_name: "Device name",
+        download_folder: "Download folder", max_size: "Maximum size", simultaneous: "Simultaneous transfers",
+        minutes: "Minutes before deletion", close: "Close", save: "Save",
+        hotspot: "Plug in the cable and turn on Personal Hotspot on the phone.",
+        fingerprint: "Certificate fingerprint: {value}", default_folder: "Default folder: {path}",
+        already_sent: "Already sent. Send again without choosing the file again.", resend: "Send again",
+        clip_expire: "Waiting files and texts delete themselves after {minutes} minutes.",
+        clip_from_phone: "From the phone", clip_on_phone: "On the phone", seconds_left: "{left} s left",
+        remove: "Remove {name}", copied: "Address copied", text_sent: "Text sent to the phone",
+        done_copied: "Copied", done_saved: "Saved", done_discarded: "Discarded", done_cleared: "Cleared"
+      },
+      it: {
+        theme: "Stile", settings: "Impostazioni", address: "Indirizzo", waiting_network: "In attesa della rete…",
+        copy_address: "Copia indirizzo", qr_alt: "Codice QR", from_phone: "Dal telefono", inbox_empty: "Nessun file in attesa.",
+        folder: "Cartella", pick_folder: "Scegli cartella", save_selected: "Salva i selezionati", discard: "Scarta",
+        to_phone: "Verso il telefono", no_files: "Nessun file scelto.", choose_files: "Scegli file", clear: "Svuota",
+        activity: "Attività", no_transfers: "Nessun trasferimento.", clear_history: "Svuota cronologia", notes: "Appunti", share_notes: "Condividi appunti",
+        clip_note: "File in attesa e testi si cancellano da soli.", clip_placeholder: "Oppure lascia vuoto per mandare ciò che hai già copiato",
+        send_phone: "Manda al telefono", cancel: "Annulla", confirm: "Conferma", device_name: "Nome dispositivo",
+        download_folder: "Cartella download", max_size: "Dimensione massima", simultaneous: "Trasferimenti simultanei",
+        minutes: "Minuti prima della cancellazione", close: "Chiudi", save: "Salva",
+        hotspot: "Collega il cavo e attiva Hotspot personale sul telefono.",
+        fingerprint: "Impronta certificato: {value}", default_folder: "Cartella predefinita: {path}",
+        already_sent: "Già inviati. Reinvia senza scegliere di nuovo il file.", resend: "Reinvia",
+        clip_expire: "File in attesa e testi si cancellano da soli dopo {minutes} minuti.",
+        clip_from_phone: "Dal telefono", clip_on_phone: "Sul telefono", seconds_left: "Ancora {left} s",
+        remove: "Rimuovi {name}", copied: "Indirizzo copiato", text_sent: "Testo mandato al telefono",
+        done_copied: "Copiato", done_saved: "Salvato", done_discarded: "Scartato", done_cleared: "Svuotato"
+      }
+    };
+    function formatDuration(seconds) {
+      const value = Math.max(0, Number(seconds) || 0);
+      if (value < 60) {
+        const shown = Math.max(value, value > 0 ? 0.1 : 0).toFixed(1).replace(/\.0$/, "");
+        return shown + " s";
+      }
+      const whole = Math.round(value);
+      const minutes = Math.floor(whole / 60);
+      const rest = whole % 60;
+      return rest ? minutes + " min " + rest + " s" : minutes + " min";
+    }
+    function t(key, vars) {
+      let text = (STR[lang] && STR[lang][key]) || STR.en[key] || key;
+      if (vars) Object.entries(vars).forEach(([name, value]) => { text = text.replaceAll("{" + name + "}", value); });
+      return text;
+    }
+    function applyLanguage(code) {
+      lang = code === "it" ? "it" : "en";
+      document.documentElement.lang = lang;
+      localStorage.setItem("localdrop-lang", lang);
+      document.querySelectorAll("[data-i18n]").forEach((node) => {
+        if (node.id === "url" && node.textContent.startsWith("http")) return;
+        if (node.closest("button.done")) return;
+        node.textContent = t(node.getAttribute("data-i18n"));
+      });
+      document.querySelectorAll("button.done").forEach((button) => {
+        const label = button.querySelector("[data-i18n]");
+        if (label && button.dataset.done) label.textContent = t(button.dataset.done);
+      });
+      document.getElementById("lang-switch").classList.toggle("it", lang === "it");
+      document.querySelectorAll("[data-i18n-placeholder]").forEach((node) => {
+        node.placeholder = t(node.getAttribute("data-i18n-placeholder"));
+      });
+      document.querySelectorAll("[data-i18n-aria]").forEach((node) => {
+        node.setAttribute("aria-label", t(node.getAttribute("data-i18n-aria")));
+      });
+      document.querySelectorAll("[data-i18n-alt]").forEach((node) => {
+        node.alt = t(node.getAttribute("data-i18n-alt"));
+      });
+      document.getElementById("lang-en").classList.toggle("on", lang === "en");
+      document.getElementById("lang-it").classList.toggle("on", lang === "it");
+      if (lastLink) window.localdrop.link(...lastLink);
+      if (lastShares) window.localdrop.shares(lastShares);
+      if (lastSent) window.localdrop.sent(lastSent);
+      if (lastClips) window.localdrop.clips(lastClips);
+      if (lastSettings && document.getElementById("settings-modal").classList.contains("show")) window.localdrop.settings(lastSettings);
+    }
 
     function fileMark() {
       const mark = document.createElement("img");
@@ -106,6 +221,33 @@
       mark.alt = "";
       mark.src = "../../svg-animazioni/document.svg";
       return mark;
+    }
+
+    function flashButton(button, doneKey) {
+      const icon = button.querySelector(".btn-ico");
+      const label = button.querySelector("[data-i18n]");
+      if (!icon || !label) return;
+      if (!icon.dataset.src) icon.dataset.src = icon.getAttribute("src");
+      button.dataset.done = doneKey;
+      button.classList.remove("pop");
+      void button.offsetWidth;
+      button.classList.add("done", "pop");
+      icon.src = "../../svg-animazioni/check.svg";
+      label.textContent = t(doneKey);
+      clearTimeout(button._done);
+      button._done = setTimeout(() => {
+        button.classList.remove("done", "pop");
+        delete button.dataset.done;
+        icon.src = icon.dataset.src;
+        label.textContent = t(label.getAttribute("data-i18n"));
+      }, 1400);
+    }
+
+    function nudgeLanguage() {
+      const box = document.getElementById("lang-switch");
+      box.classList.add("moving");
+      clearTimeout(box._timer);
+      box._timer = setTimeout(() => box.classList.remove("moving"), 320);
     }
 
     function toast(text) {
@@ -133,24 +275,28 @@
     }
 
     window.localdrop = {
-      link(urls, pin, folder, qr) {
+      link(urls, pin, folder, qr, fingerprint) {
+        lastLink = [urls, pin, folder, qr, fingerprint];
         const ready = urls.length && !urls[0].includes("127.0.0.1");
-        urlEl.textContent = ready ? urls[0] : "Collega il cavo e attiva Hotspot personale sul telefono.";
+        urlEl.textContent = ready ? urls[0] : t("hotspot");
         const image = document.getElementById("qr");
         if (ready && qr) { image.src = qr; image.hidden = false; } else { image.hidden = true; }
+        const mark = document.getElementById("fingerprint");
+        if (mark) mark.textContent = ready && fingerprint ? t("fingerprint", { value: fingerprint }) : "";
         requestAnimationFrame(fitQr);
-        const parts = (pin || "000 000").replace(/\D/g, "").padStart(6, "0");
-        setPin(parts.slice(0, 3), parts.slice(3, 6));
-        folderEl.textContent = folder ? "Cartella predefinita: " + folder : "";
+        const parts = (pin || "0000 0000").replace(/\D/g, "").padStart(8, "0");
+        setPin(parts.slice(0, 4), parts.slice(4, 8));
+        folderEl.textContent = folder ? t("default_folder", { path: folder }) : "";
         const inboxFolder = document.getElementById("inbox-folder");
         if (folder && !inboxFolder.value) inboxFolder.value = folder;
       },
       shares(items) {
+        lastShares = items;
         sharesEl.innerHTML = "";
         if (!items.length) {
           const note = document.createElement("p");
           note.className = "empty";
-          note.textContent = "Nessun file scelto.";
+          note.textContent = t("no_files");
           sharesEl.appendChild(note);
           return;
         }
@@ -170,12 +316,13 @@
         });
       },
       sent(items) {
+        lastSent = items;
         const box = document.getElementById("sent");
         box.innerHTML = "";
         if (!items.length) return;
         const note = document.createElement("p");
         note.className = "empty";
-        note.textContent = "Già inviati. Reinvia senza scegliere di nuovo il file.";
+        note.textContent = t("already_sent");
         box.appendChild(note);
         items.forEach((item) => {
           const row = document.createElement("div");
@@ -190,7 +337,7 @@
           mark.alt = "";
           mark.src = "../../svg-animazioni/cartoon-square-arrow-right-enter.svg";
           button.appendChild(mark);
-          button.appendChild(document.createTextNode("Reinvia"));
+          button.appendChild(document.createTextNode(t("resend")));
           button.style.marginTop = "8px";
           button.style.width = "100%";
           button.onclick = () => pywebview.api.resend_share(item.id);
@@ -212,45 +359,44 @@
           input.dataset.id = item.id;
           label.appendChild(input);
           if (item.preview) {
+            const shot = document.createElement("div");
+            shot.className = "shot";
             const img = document.createElement("img");
             img.className = "preview";
             img.src = item.preview;
-            label.appendChild(img);
+            img.alt = "";
+            shot.appendChild(img);
+            if (item.meta && item.meta.length) {
+              const meta = document.createElement("div");
+              meta.className = "meta";
+              meta.textContent = item.meta.join("\n");
+              shot.appendChild(meta);
+            }
+            label.appendChild(shot);
           } else {
             label.appendChild(fileMark());
           }
           label.appendChild(document.createTextNode(" " + item.name));
-          if (item.meta && item.meta.length) {
-            const meta = document.createElement("div");
-            meta.className = "meta";
-            meta.textContent = item.meta.join("\n");
-            label.appendChild(meta);
-          }
           box.appendChild(label);
-          const send = document.createElement("button");
-          send.className = "ghost";
-          send.type = "button";
-          const mark = document.createElement("img");
-          mark.className = "btn-ico";
-          mark.alt = "";
-          mark.src = "../../svg-animazioni/cartoon-square-arrow-right-enter.svg";
-          send.appendChild(mark);
-          send.appendChild(document.createTextNode("Manda al telefono"));
-          send.style.marginTop = "8px";
-          send.style.width = "100%";
-          send.onclick = () => pywebview.api.offer_incoming([item.id]);
-          box.appendChild(send);
         });
       },
       log(line) {
         const current = [...activityEl.querySelectorAll(".item")].map((node) => node.textContent);
         current.unshift(line);
-        rows(activityEl, current.slice(0, 40), "Nessun trasferimento.");
+        rows(activityEl, current.slice(0, 40), t("no_transfers"));
+      },
+      activity(lines) {
+        rows(activityEl, lines || [], t("no_transfers"));
+        if (!lines || !lines.length) {
+          document.getElementById("bar-fill").style.width = "0";
+          document.getElementById("bar-label").textContent = "";
+        }
       },
       progress(item) {
         const pct = item.total ? Math.round(item.sent * 100 / item.total) : 0;
+        const took = typeof item.seconds === "number" ? "  ·  " + formatDuration(item.seconds) : "";
         document.getElementById("bar-fill").style.width = pct + "%";
-        document.getElementById("bar-label").textContent = item.name + "  " + pct + "%";
+        document.getElementById("bar-label").textContent = item.name + "  " + pct + "%" + took;
       },
       ask(kind, title, body) {
         promptKind = kind;
@@ -258,18 +404,54 @@
         document.getElementById("modal-body").textContent = body;
         modal.classList.add("show");
       },
+      language(code) { applyLanguage(code); },
+      clips(data) {
+        lastClips = data;
+        const button = document.getElementById("clip-share");
+        const note = document.getElementById("clip-note");
+        const field = document.getElementById("clip-out");
+        const send = document.getElementById("clip-send");
+        const list = document.getElementById("clip-list");
+        const saved = document.getElementById("set-share");
+        button.setAttribute("aria-checked", data.open ? "true" : "false");
+        if (saved) saved.checked = !!data.open;
+        note.textContent = t("clip_expire", { minutes: data.minutes });
+        field.disabled = !data.open;
+        send.disabled = !data.open;
+        list.innerHTML = "";
+        (data.items || []).forEach((item) => {
+          const row = document.createElement("div");
+          row.className = "item";
+          const title = document.createElement("p");
+          title.className = "hint";
+          title.textContent = item.way === "phone" ? t("clip_from_phone") : t("clip_on_phone");
+          const body = document.createElement("p");
+          body.className = "clip-text";
+          body.textContent = item.text;
+          const left = document.createElement("p");
+          left.className = "hint";
+          left.textContent = t("seconds_left", { left: item.left });
+          row.appendChild(title);
+          row.appendChild(body);
+          row.appendChild(left);
+          list.appendChild(row);
+        });
+      },
       settings(data) {
+        lastSettings = data;
         document.getElementById("set-name").value = data.device_name;
         document.getElementById("set-folder").value = data.download_dir;
         document.getElementById("set-limit").value = data.max_file_bytes;
         document.getElementById("set-slots").value = data.max_concurrent_transfers;
+        document.getElementById("set-expire").value = data.expire_minutes;
+        document.getElementById("set-share").checked = !!data.share_clipboard;
         const box = document.getElementById("trusted");
         box.innerHTML = "";
         data.trusted.forEach((item) => {
           const button = document.createElement("button");
           button.className = "ghost";
           button.type = "button";
-          button.textContent = "Rimuovi " + item[1];
+          button.textContent = t("remove", { name: item[1] });
           button.onclick = () => pywebview.api.forget(item[0]);
           box.appendChild(button);
         });
@@ -281,7 +463,7 @@
       const value = urlEl.textContent;
       if (!value.startsWith("http")) return;
       await pywebview.api.copy_text(value);
-      toast("Indirizzo copiato");
+      flashButton(document.getElementById("copy"), "done_copied");
     };
     function selectedInbox() {
       return [...document.querySelectorAll("#inbox input:checked")].map((node) => node.dataset.id);
@@ -291,11 +473,43 @@
       if (folder) document.getElementById("inbox-folder").value = folder;
     };
     document.getElementById("inbox-save").onclick = () => {
+      if (!selectedInbox().length) return;
       pywebview.api.save_incoming(selectedInbox(), document.getElementById("inbox-folder").value);
+      flashButton(document.getElementById("inbox-save"), "done_saved");
     };
-    document.getElementById("inbox-drop").onclick = () => pywebview.api.discard_incoming(selectedInbox());
+    document.getElementById("inbox-drop").onclick = () => {
+      if (!selectedInbox().length) return;
+      pywebview.api.discard_incoming(selectedInbox());
+      flashButton(document.getElementById("inbox-drop"), "done_discarded");
+    };
+    document.getElementById("clip-share").onclick = () => {
+      const button = document.getElementById("clip-share");
+      const enabled = button.getAttribute("aria-checked") !== "true";
+      button.setAttribute("aria-checked", enabled ? "true" : "false");
+      button.classList.add("moving");
+      clearTimeout(button._timer);
+      button._timer = setTimeout(() => button.classList.remove("moving"), 320);
+      pywebview.api.set_share_clipboard(enabled);
+    };
+    document.getElementById("clip-send").onclick = async () => {
+      if (document.getElementById("clip-share").getAttribute("aria-checked") !== "true") return;
+      let text = document.getElementById("clip-out").value.trim();
+      if (!text) text = (await pywebview.api.read_clipboard() || "").trim();
+      if (!text) return;
+      pywebview.api.send_clip(text);
+      document.getElementById("clip-out").value = "";
+      toast(t("text_sent"));
+    };
     document.getElementById("choose").onclick = () => pywebview.api.choose_files();
-    document.getElementById("clear").onclick = () => pywebview.api.clear_shares();
+    document.getElementById("clear").onclick = () => {
+      pywebview.api.clear_shares();
+      flashButton(document.getElementById("clear"), "done_cleared");
+    };
+    document.getElementById("history-clear").onclick = () => {
+      if (window.pywebview) pywebview.api.clear_history();
+      flashButton(document.getElementById("history-clear"), "done_cleared");
+      window.localdrop.activity([]);
+    };
     document.getElementById("settings").onclick = () => pywebview.api.open_settings();
     document.getElementById("settings-close").onclick = () => document.getElementById("settings-modal").classList.remove("show");
     document.getElementById("settings-save").onclick = () => {
@@ -303,7 +517,9 @@
         document.getElementById("set-name").value,
         document.getElementById("set-folder").value,
         document.getElementById("set-limit").value,
-        document.getElementById("set-slots").value
+        document.getElementById("set-slots").value,
+        document.getElementById("set-expire").value,
+        document.getElementById("set-share").checked
       );
       document.getElementById("settings-modal").classList.remove("show");
     };
@@ -315,10 +531,10 @@
     document.getElementById("modal-no").onclick = () => { modal.classList.remove("show"); pywebview.api.answer(false); };
     function fitQr() {
       const image = document.getElementById("qr");
-      const pin = document.querySelector(".pin");
-      const button = document.getElementById("copy");
-      if (!image || image.hidden || !pin || !button) return;
-      const size = Math.round(button.getBoundingClientRect().bottom - pin.getBoundingClientRect().top);
+      const line = document.querySelector(".address-line");
+      if (!image || image.hidden || !line) return;
+      const room = line.clientWidth - 188;
+      const size = Math.max(188, Math.min(240, room));
       image.style.width = size + "px";
       image.style.height = size + "px";
     }
@@ -328,7 +544,7 @@
       document.getElementById("pin-b").textContent = right;
       requestAnimationFrame(fitQr);
     }
-    setPin("000", "000");
+    setPin("0000", "0000");
     const logo = document.getElementById("logo");
     const face = logo.textContent;
     logo.textContent = "";
@@ -378,6 +594,17 @@
       clearTimeout(themeButton._timer);
       themeButton._timer = setTimeout(() => themeButton.classList.remove("moving"), 320);
     }
+    applyLanguage(localStorage.getItem("localdrop-lang") === "it" ? "it" : "en");
+    document.getElementById("lang-en").onclick = () => {
+      nudgeLanguage();
+      applyLanguage("en");
+      if (window.pywebview) pywebview.api.set_language("en");
+    };
+    document.getElementById("lang-it").onclick = () => {
+      nudgeLanguage();
+      applyLanguage("it");
+      if (window.pywebview) pywebview.api.set_language("it");
+    };
     paintTheme(localStorage.getItem(themeKey) !== "light", false);
     themeButton.onclick = () => {
       const dark = !document.body.classList.contains("dark");

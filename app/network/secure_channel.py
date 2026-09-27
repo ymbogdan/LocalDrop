@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import ssl
 import struct
 from collections.abc import Callable
@@ -29,7 +30,9 @@ from app.network.protocol import (
     read_size,
     validate_hello,
 )
+from app.security.admission import Admission
 from app.security.crypto_identity import CryptoIdentity, device_id_from_certificate, fingerprint_der
+from app.security.limits import DEFAULT_LIMITS
 from app.security.pairing import verification_code
 from app.security.tls import client_context, server_context
 from app.security.trust import TrustDecision, TrustStore
@@ -69,6 +72,7 @@ class SecureSession:
         self.writer: asyncio.StreamWriter | None = None
         self.queues: dict[str, asyncio.Queue] = {}
         self.write_lock = asyncio.Lock()
+        self.connection_id = ""
 
 
 class SecureNode:
@@ -81,11 +85,13 @@ class SecureNode:
     ) -> None:
         self.identity = identity
         self.device_name = device_name
-        self.trust = TrustStore(trust_path)
+        self.trust = TrustStore(trust_path, identity)
         self.confirm_pairing = confirm_pairing
         self.on_incoming = None
         self._server: asyncio.Server | None = None
         self.port = 0
+        self._admission = Admission()
+        self._peers: set[asyncio.StreamWriter] = set()
 
     async def start(self, host: str = "0.0.0.0", port: int = TCP_PORT) -> int:
         try:
@@ -99,6 +105,8 @@ class SecureNode:
         return self.port
 
     async def stop(self) -> None:
+        for writer in list(self._peers):
+            writer.close()
         if self._server is not None:
             self._server.close()
             await self._server.wait_closed()
@@ -134,9 +142,15 @@ class SecureNode:
             raise SecureError("REJECTED") from exc
 
     async def _accept(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        ip = _peer_ip(writer)
+        if not self._admission.try_open(ip):
+            writer.close()
+            await writer.wait_closed()
+            return
         session = SecureSession()
         session.reader = reader
         session.writer = writer
+        self._peers.add(writer)
         try:
             await self._upgrade(session, server_side=True)
             await self._hello(session)
@@ -154,6 +168,8 @@ class SecureNode:
         except (ssl.SSLError, asyncio.IncompleteReadError, ConnectionError, TimeoutError, OSError, ProtocolError):
             log.warning("[TLS] Connection closed")
         finally:
+            self._peers.discard(writer)
+            self._admission.close(ip)
             await _close(session)
 
     async def _upgrade(self, session: SecureSession, *, server_side: bool) -> None:
@@ -183,16 +199,25 @@ class SecureNode:
         if presented != session.fingerprint:
             raise SecureError("REJECTED")
         session.state = SecureState.PEER_AUTHENTICATED
+        session.connection_id = os.urandom(16).hex()
         log.info("TLS 1.3 established")
         log.info("Peer authenticated")
 
     async def _hello(self, session: SecureSession) -> None:
-        await _write_message(session, parse_message(hello_payload(self.identity.device_id, self.device_name)))
+        body = hello_payload(self.identity.device_id, self.device_name)
+        if self.identity.successor_certificate_pem and self.identity.successor_proof:
+            body["successor_certificate"] = self.identity.successor_certificate_pem.decode("utf-8")
+            body["successor_proof"] = self.identity.successor_proof
+        await _write_message(session, parse_message(body))
         message = await _read_message(session)
         device_id, device_name = validate_hello(message_to_dict(message))
         if device_id != session.device_id:
             raise SecureError("REJECTED")
         session.device_name = device_name
+        certificate = message.payload.get("successor_certificate")
+        proof = message.payload.get("successor_proof")
+        if isinstance(certificate, str) and isinstance(proof, str):
+            self.trust.accept_successor(session.device_id, certificate, proof)
 
     async def _authorize(
         self,
@@ -251,7 +276,7 @@ class SecureNode:
     async def _pump(self, session: SecureSession) -> None:
         try:
             while session.state == SecureState.READY and session.reader is not None:
-                message = await _read_message(session)
+                message = await _read_message(session, DEFAULT_LIMITS.timeout_seconds)
                 await self._route(session, message)
         except asyncio.CancelledError:
             raise
@@ -328,14 +353,21 @@ async def _write_message(session: SecureSession, message: Message) -> None:
         return
 
 
-async def _read_message(session: SecureSession) -> Message:
+async def _read_message(session: SecureSession, timeout: float = 5) -> Message:
     reader = session.reader
     if reader is None:
         raise SecureError("REJECTED")
-    header = await asyncio.wait_for(reader.readexactly(4), 5)
+    header = await asyncio.wait_for(reader.readexactly(4), timeout)
     size = read_size(header, MAX_CONTROL_MESSAGE_SIZE)
-    body = await asyncio.wait_for(reader.readexactly(size), 5)
+    body = await asyncio.wait_for(reader.readexactly(size), timeout)
     return parse_message(decode_message(body))
+
+
+def _peer_ip(writer: asyncio.StreamWriter) -> str:
+    peer = writer.get_extra_info("peername")
+    if not peer:
+        return ""
+    return str(peer[0]).split("%", 1)[0]
 
 
 async def _close(session: SecureSession) -> None:

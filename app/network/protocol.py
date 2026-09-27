@@ -242,7 +242,13 @@ def parse_message(data: dict) -> Message:
 
 def message_to_dict(message: Message) -> dict:
     if message.type == MessageType.HELLO:
-        return hello_payload(str(message.payload["device_id"]), str(message.payload["device_name"]))
+        body = hello_payload(str(message.payload["device_id"]), str(message.payload["device_name"]))
+        certificate = message.payload.get("successor_certificate")
+        proof = message.payload.get("successor_proof")
+        if isinstance(certificate, str) and isinstance(proof, str) and certificate and proof:
+            body["successor_certificate"] = certificate
+            body["successor_proof"] = proof
+        return body
     body: dict = {
         "type": message.type.value,
         "protocol_version": message.protocol_version,
@@ -439,12 +445,25 @@ def validate_file_name(file_name: object) -> str:
 def _parse_hello(data: dict, request_id: str | None) -> Message:
     device_id = _device_id(data.get("device_id"))
     device_name = _device_name(data.get("device_name"))
+    payload = {"device_id": device_id, "device_name": device_name}
+    certificate = data.get("successor_certificate")
+    proof = data.get("successor_proof")
+    if (
+        isinstance(certificate, str)
+        and isinstance(proof, str)
+        and certificate
+        and proof
+        and len(certificate) <= 20_000
+        and len(proof) <= 2_000
+    ):
+        payload["successor_certificate"] = certificate
+        payload["successor_proof"] = proof
     return Message(
         MessageType.HELLO,
         PROTOCOL_VERSION,
         request_id,
         None,
-        {"device_id": device_id, "device_name": device_name},
+        payload,
     )
 
 

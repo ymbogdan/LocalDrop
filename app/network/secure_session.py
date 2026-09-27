@@ -3,8 +3,10 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import secrets
 import ssl
 import struct
+import time
 import uuid
 from collections.abc import Callable
 from pathlib import Path
@@ -13,9 +15,11 @@ from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 
 from app.network.constants import PROTOCOL_VERSION
+from app.security.admission import Admission
 from app.security.crypto_identity import CryptoIdentity, device_id_from_certificate, fingerprint_der
 from app.security.integrity import hash_file, hashes_match
-from app.security.limits import DEFAULT_LIMITS, Limits
+from app.security.limits import DEFAULT_LIMITS, Limits, transfer_budget
+from app.security.sessions import SeenSessions, new_session_id
 from app.security.pairing import verification_code
 from app.security.tls import client_context, server_context
 from app.security.trust import TrustDecision, TrustStore
@@ -63,6 +67,9 @@ class SecureNode:
         self._server: asyncio.Server | None = None
         self._connections = 0
         self._transfers = 0
+        self._by_peer: dict[str, int] = {}
+        self._sessions = SeenSessions()
+        self._admission = Admission()
 
     async def start(self, host: str = "127.0.0.1", port: int = 0) -> tuple[str, int]:
         self._server = await asyncio.start_server(self._handle_plain, host, port)
@@ -88,7 +95,8 @@ class SecureNode:
         record = self.trust.get(device_id)
         if record is None:
             raise SecurityError("REJECTED", "Unknown device")
-        context = client_context(self.identity, record.certificate_pem.encode("utf-8"))
+        extra = [record.successor_certificate_pem.encode("utf-8")] if record.successor_certificate_pem else None
+        context = client_context(self.identity, record.certificate_pem.encode("utf-8"), extra)
         try:
             reader, writer = await asyncio.wait_for(
                 asyncio.open_connection(host, port, ssl=context),
@@ -101,13 +109,16 @@ class SecureNode:
         try:
             await self._check_peer(writer)
             log.info("Secure connection established")
-            session_id = str(uuid.uuid4())
-            await _write_frame(writer, HELLO, {"session_id": session_id, "protocol_version": PROTOCOL_VERSION, "sequence": 0}, self.limits)
+            session_id = new_session_id()
+            hello = {"session_id": session_id, "protocol_version": PROTOCOL_VERSION, "sequence": 0}
+            _attach_successor(hello, self.identity)
+            await _write_frame(writer, HELLO, hello, self.limits)
             ack = await _read_frame(reader, self.limits)
             if ack[0] == ERROR:
                 raise SecurityError(str(ack[1].get("code", "REJECTED")), "Transfer rejected")
             if ack[0] != HELLO_ACK or ack[1].get("session_id") != session_id:
                 raise SecurityError("REJECTED", "Invalid session")
+            _remember_successor(self.trust, device_id, ack[1])
             digest = hash_file(path, self.limits.max_chunk_bytes)
             size = path.stat().st_size
             validate_file_size(size, self.limits)
@@ -166,7 +177,8 @@ class SecureNode:
             await writer.wait_closed()
 
     async def _handle_plain(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
-        if self._connections >= self.limits.max_connections:
+        ip = _peer_ip(writer)
+        if self._connections >= self.limits.max_connections or not self._admission.try_open(ip):
             writer.close()
             await writer.wait_closed()
             return
@@ -189,6 +201,7 @@ class SecureNode:
             log.info("Pairing closed")
         finally:
             self._connections -= 1
+            self._admission.close(ip)
             writer.close()
             try:
                 await writer.wait_closed()
@@ -206,6 +219,11 @@ class SecureNode:
         return str(socket_name[0]), int(socket_name[1])
 
     async def _handle_tls(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        ip = _peer_ip(writer)
+        if not self._admission.try_open(ip):
+            writer.close()
+            await writer.wait_closed()
+            return
         partial: Path | None = None
         started = False
         try:
@@ -216,10 +234,15 @@ class SecureNode:
             if kind != HELLO:
                 raise SecurityError("REJECTED", "Expected hello")
             session_id = _require_session(header)
+            if not self._sessions.admit(session_id):
+                raise SecurityError("REJECTED", "Replay rejected")
             if header.get("protocol_version") != PROTOCOL_VERSION:
                 raise SecurityError("REJECTED", "Unsupported protocol")
+            _remember_successor(self.trust, peer_id, header)
             expected = 1
-            await _write_frame(writer, HELLO_ACK, {"session_id": session_id, "sequence": 0}, self.limits)
+            ack = {"session_id": session_id, "sequence": 0}
+            _attach_successor(ack, self.identity)
+            await _write_frame(writer, HELLO_ACK, ack, self.limits)
             kind, header, _body = await _read_frame(reader, self.limits)
             expected = _next_sequence(header, session_id, expected)
             if kind != TRANSFER_REQUEST:
@@ -232,18 +255,32 @@ class SecureNode:
             peer_name = self.trust.get(peer_id).device_name if self.trust.get(peer_id) else peer_id
             if self._transfers >= self.limits.max_concurrent_transfers:
                 raise SecurityError("REJECTED", "Too many transfers")
+            if self._by_peer.get(peer_id, 0) >= self.limits.max_transfers_per_peer:
+                raise SecurityError("REJECTED", "Too many transfers")
             if not self.accept_transfer(filename, size, peer_name):
                 raise SecurityError("REJECTED", "Transfer refused")
             self._transfers += 1
+            self._by_peer[peer_id] = self._by_peer.get(peer_id, 0) + 1
             started = True
             target = unique_destination(self.download_dir, filename)
-            partial = target.with_name(target.name + ".partial")
+            partial = self.download_dir / f".{secrets.token_hex(16)}.partial"
             await _write_frame(writer, TRANSFER_RESPONSE, {"accepted": True, "session_id": session_id}, self.limits)
             log.info("Transfer started: %s", filename)
             received = 0
+            deadline = time.monotonic() + transfer_budget(size)
             with partial.open("wb") as handle:
                 while received < size:
-                    kind, header, body = await _read_frame(reader, self.limits)
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        raise SecurityError("REJECTED", "Transfer timed out")
+                    try:
+                        kind, header, body = await _read_frame(
+                            reader,
+                            self.limits,
+                            min(self.limits.timeout_seconds, remaining),
+                        )
+                    except TimeoutError as exc:
+                        raise SecurityError("REJECTED", "Transfer timed out") from exc
                     expected = _next_sequence(header, session_id, expected)
                     if kind != CHUNK:
                         raise SecurityError("REJECTED", "Expected chunk")
@@ -274,8 +311,12 @@ class SecureNode:
         except Exception:
             log.exception("Transfer failed")
         finally:
+            self._admission.close(ip)
             if started:
                 self._transfers -= 1
+                self._by_peer[peer_id] = self._by_peer.get(peer_id, 1) - 1
+                if self._by_peer[peer_id] <= 0:
+                    self._by_peer.pop(peer_id, None)
             if partial is not None and partial.exists():
                 partial.unlink(missing_ok=True)
             writer.close()
@@ -335,21 +376,44 @@ async def _pair_exchange(
     return code
 
 
+def _peer_ip(writer: asyncio.StreamWriter) -> str:
+    peer = writer.get_extra_info("peername")
+    if not peer:
+        return ""
+    return str(peer[0]).split("%", 1)[0]
+
+
 def _require_session(header: dict) -> str:
     session_id = header.get("session_id")
-    if not isinstance(session_id, str):
+    if not isinstance(session_id, str) or len(session_id) != 32:
         raise SecurityError("REJECTED", "Invalid session")
     try:
-        return str(uuid.UUID(session_id))
+        raw = bytes.fromhex(session_id)
     except ValueError as exc:
         raise SecurityError("REJECTED", "Invalid session") from exc
+    if len(raw) != 16:
+        raise SecurityError("REJECTED", "Invalid session")
+    return session_id.lower()
+
+
+def _attach_successor(header: dict, identity: CryptoIdentity) -> None:
+    if identity.successor_certificate_pem and identity.successor_proof:
+        header["successor_certificate"] = identity.successor_certificate_pem.decode("utf-8")
+        header["successor_proof"] = identity.successor_proof
+
+
+def _remember_successor(trust: TrustStore, device_id: str, header: dict) -> None:
+    certificate = header.get("successor_certificate")
+    proof = header.get("successor_proof")
+    if isinstance(certificate, str) and isinstance(proof, str):
+        trust.accept_successor(device_id, certificate, proof)
 
 
 def _next_sequence(header: dict, session_id: str, expected: int) -> int:
     if header.get("session_id") != session_id:
         raise SecurityError("REJECTED", "Replay rejected")
     sequence = header.get("sequence")
-    if isinstance(sequence, bool) or not isinstance(sequence, int) or sequence != expected:
+    if isinstance(sequence, bool) or not isinstance(sequence, int) or sequence != expected or sequence < expected:
         raise SecurityError("REJECTED", "Replay rejected")
     return expected + 1
 
@@ -369,16 +433,17 @@ async def _write_frame(
     await writer.drain()
 
 
-async def _read_frame(reader: asyncio.StreamReader, limits: Limits) -> tuple[int, dict, bytes]:
-    prefix = await asyncio.wait_for(reader.readexactly(9), limits.timeout_seconds)
+async def _read_frame(reader: asyncio.StreamReader, limits: Limits, timeout: float | None = None) -> tuple[int, dict, bytes]:
+    wait = limits.timeout_seconds if timeout is None else timeout
+    prefix = await asyncio.wait_for(reader.readexactly(9), wait)
     kind = prefix[0]
     header_len, body_len = struct.unpack(">II", prefix[1:])
     if header_len > limits.max_metadata_bytes or body_len > limits.max_chunk_bytes:
         raise SecurityError("REJECTED", "Message too large")
     if kind not in {HELLO, HELLO_ACK, TRANSFER_REQUEST, TRANSFER_RESPONSE, CHUNK, COMPLETE, ERROR, PAIR_OFFER}:
         raise SecurityError("REJECTED", "Unknown message")
-    header_bytes = await asyncio.wait_for(reader.readexactly(header_len), limits.timeout_seconds)
-    body = await asyncio.wait_for(reader.readexactly(body_len), limits.timeout_seconds)
+    header_bytes = await asyncio.wait_for(reader.readexactly(header_len), wait)
+    body = await asyncio.wait_for(reader.readexactly(body_len), wait)
     header = json.loads(header_bytes.decode("utf-8"))
     if not isinstance(header, dict):
         raise SecurityError("REJECTED", "Invalid message")

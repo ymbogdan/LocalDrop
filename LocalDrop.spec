@@ -5,7 +5,7 @@ a = Analysis(
     ['app\\main.py'],
     pathex=['.'],
     binaries=[],
-    datas=[('app/gui/desktop.html', 'app/gui'), ('app/gui/glass.css', 'app/gui'), ('svg-animazioni', 'svg-animazioni')],
+    datas=[('app/gui/desktop.html', 'app/gui'), ('app/gui/glass.css', 'app/gui'), ('app/phone/jsqr.js', 'app/phone'), ('svg-animazioni', 'svg-animazioni')],
     hiddenimports=['webview'],
     hookspath=[],
     hooksconfig={},
